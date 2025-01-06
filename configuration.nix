@@ -25,10 +25,10 @@
   boot.loader.timeout = 3;
   boot.loader.systemd-boot.configurationLimit = 5;
 
-  # boot.kernelPackages = pkgs.linuxKernel.kernels.linux_6_8;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
   # boot.kernelPackages = pkgs.linuxPackages_6_8;
   # boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_6;
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_zen;
+  # boot.kernelPackages = pkgs.linuxKernel.packages.linux_zen;
   # nix-prefetch-git --url https://github.com/zen-kernel/zen-kernel.git --rev v6.8.9-zen1 --fetch-submodules
   # boot.kernelPackages = let
   #   version = "6.8.9";
@@ -59,6 +59,8 @@
     ];
   };
   # environment.sessionVariables = { LIBVA_DRIVER_NAME = "iHD"; }; # Force intel-media-driver
+
+  environment.etc.hosts.mode = "0644";
 
   networking.hostName = "Yura-PC"; # Define your hostname.
   networking.hostId = "110a2814"; # Required for ZFS.
@@ -181,7 +183,7 @@
     group = "cazzzer";
     extraGroups = [ "networkmanager" "wheel" "docker" "wireshark" "geoclue" ];
     packages = with pkgs; [
-      python312Packages.torch
+      # python312Packages.torch
 
       kdePackages.kate
       kdePackages.yakuake
@@ -198,11 +200,11 @@
       bun
 
       # yin_yang deps, f*** this packaging s***
-      python312Packages.systemd
-      python312Packages.pyside6
-      python312Packages.dateutils
-      python312Packages.psutil
-      libnotify
+      # python312Packages.systemd
+      # python312Packages.pyside6
+      # python312Packages.dateutils
+      # python312Packages.psutil
+      # libnotify
       # thunderbird
     ];
   };
@@ -210,10 +212,11 @@
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = false;
   # Install firefox.
-  programs.firefox.enable = true;
+  # programs.firefox.enable = true;
   programs.kdeconnect.enable = true;
   programs.fish.enable = true;
   programs.git.enable = true;
+  programs.git.lfs.enable = true;
   # https://nixos.wiki/wiki/Git
   programs.git.package = pkgs.git.override { withLibsecret = true; };
   programs.lazygit.enable = true;
@@ -290,9 +293,9 @@
   # ];
   
   environment.systemPackages = with pkgs; [
-    level-zero
-    oneDNN
-    python312Packages.torch
+    # level-zero
+    # oneDNN
+    # python312Packages.torch
     # zfs
     # fish
 
@@ -305,7 +308,9 @@
     eza
     fastfetch
     fd
+    ffmpeg
     # flatpak
+    host-spawn # for flatpaks
     kdePackages.flatpak-kcm
     kdePackages.filelight
     # git
@@ -318,6 +323,7 @@
     # jetbrains.rust-rover
     # jetbrains.pycharm-professional
     # jetbrains.webstorm
+    android-studio
     mediainfo
     micro
     mpv
@@ -370,7 +376,7 @@
   # services.openssh.enable = true;
 
   # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
+  networking.firewall.allowedTCPPorts = [ 8080 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
