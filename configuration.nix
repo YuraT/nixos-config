@@ -24,32 +24,8 @@
 
   boot.loader.timeout = 3;
   boot.loader.systemd-boot.configurationLimit = 5;
-
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
-  # boot.kernelPackages = pkgs.linuxPackages_6_8;
-  # boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_6;
-  # boot.kernelPackages = pkgs.linuxKernel.packages.linux_zen;
-  # nix-prefetch-git --url https://github.com/zen-kernel/zen-kernel.git --rev v6.8.9-zen1 --fetch-submodules
-  # boot.kernelPackages = let
-  #   version = "6.8.9";
-  #   suffix = "zen1"; # use "lqx1" for linux_lqx
-  # in pkgs.linuxKernel.packagesFor (pkgs.linux_zen.override {
-  #   inherit version suffix;
-  #   modDirVersion = lib.versions.pad 3 "${version}-${suffix}";
-  #   src = pkgs.fetchFromGitHub {
-  #     owner = "zen-kernel";
-  #     repo = "zen-kernel";
-  #     rev = "v${version}-${suffix}";
-  #     sha256 = "1wva92wk0pxii4f6hn27kssgrz8yy38kk38w2wm5hh1qyz3ij1vj";
-  #   };
-  # });
-
   boot.extraModulePackages = with config.boot.kernelPackages; [ zfs ];
-
-  # https://discourse.nixos.org/t/dev-zfs-has-the-wrong-permissions-after-rebooting/48737
-  # environment.etc."tmpfiles.d/zfs.conf".text = ''
-  # z /dev/zfs          0666 - -     -
-  # '';
 
   # https://nixos.wiki/wiki/Accelerated_Video_Playback
   hardware.graphics = {
@@ -58,7 +34,6 @@
       intel-media-driver # LIBVA_DRIVER_NAME=iHD
     ];
   };
-  # environment.sessionVariables = { LIBVA_DRIVER_NAME = "iHD"; }; # Force intel-media-driver
 
   environment.etc.hosts.mode = "0644";
 
@@ -110,7 +85,7 @@
   services.printing.enable = true;
 
   # Enable sound with pipewire.
-  hardware.pulseaudio.enable = false;
+  services.pulseaudio.enable = false;
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -183,7 +158,6 @@
     group = "cazzzer";
     extraGroups = [ "networkmanager" "wheel" "docker" "wireshark" "geoclue" ];
     packages = with pkgs; [
-      # python312Packages.torch
 
       kdePackages.kate
       kdePackages.yakuake
@@ -198,14 +172,6 @@
       nodejs_22
       pnpm
       bun
-
-      # yin_yang deps, f*** this packaging s***
-      # python312Packages.systemd
-      # python312Packages.pyside6
-      # python312Packages.dateutils
-      # python312Packages.psutil
-      # libnotify
-      # thunderbird
     ];
   };
 
@@ -286,23 +252,25 @@
     zlib
   ];
 
-  # attempt to fix flatpak firefox cjk fonts 
+  # attempt to fix flatpak firefox cjk fonts
   # fonts.fontconfig.defaultFonts.serif = [
   #   "Noto Serif"
   #   "DejaVu Serif"
   # ];
+  # fonts.fontconfig.defaultFonts.sansSerif = [
+  #   "Noto Sans"
+  #   "DejaVu Sans"
+  # ];
+
+  workarounds.flatpak.enable = true;
+  fonts.packages = with pkgs; [ nerd-fonts.fantasque-sans-mono ];
+  # fonts.fontDir.enable = true;
+  # fonts.fontconfig.allowBitmaps = false;
   
   environment.systemPackages = with pkgs; [
-    # level-zero
-    # oneDNN
-    # python312Packages.torch
-    # zfs
-    # fish
-
     bat
     # bluez
-#     docker_27
-#     docker-compose
+    darkman
     dust
     efibootmgr
     eza
