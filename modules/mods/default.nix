@@ -1,4 +1,4 @@
-{...}: {
+{ ... }: {
   imports = [
     ./kb-input.nix
   ];

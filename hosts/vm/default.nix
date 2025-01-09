@@ -2,14 +2,14 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ lib, config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   imports =
     [ # Include the results of the hardware scan.
 #      ./hardware-configuration-vm.nix
     ];
-  common.kb-input.enable = true;
+  mods.kb-input.enable = true;
 
 #  boot.kernelParams = [ "console=tty0" ];
   proxmox.qemuConf.bios = "ovmf";
@@ -30,7 +30,8 @@
 
   environment.etc.hosts.mode = "0644";
 
-  networking.hostName = "nixos"; # Define your hostname.
+  # managed by cloud-init
+  # networking.hostName = "nixos"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
   # Configure network proxy if necessary
@@ -39,24 +40,6 @@
 
   # Enable networking
   networking.networkmanager.enable = true;
-
-  # Set your time zone.
-  time.timeZone = "America/Los_Angeles";
-
-  # Select internationalisation properties.
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
-  };
 
   # Enable the X11 windowing system.
   # You can disable this if you're only using the Wayland session.
@@ -67,25 +50,15 @@
   services.displayManager.sddm.wayland.enable = true;
   services.desktopManager.plasma6.enable = true;
 
-  # Configure keymap in X11
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
-
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-
+  # VM services
+  services.cloud-init.enable = true;
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
-  services.sshd.enable = true;
+  services.openssh.enable = true;
+  services.openssh.settings.PasswordAuthentication = false;
+  services.openssh.settings.KbdInteractiveAuthentication = false;
   services.flatpak.enable = true;
 
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
-
-  # Define a user account. Don't forget to set a password with ‘passwd’.
   users.groups = {
     cazzzer = {
       gid = 1000;
@@ -115,19 +88,6 @@
   programs.bat.enable = true;
   programs.htop.enable = true;
   programs.wireshark.enable = true;
-
-  # https://discourse.nixos.org/t/firefox-does-not-use-kde-window-decorations-and-cursor/32132/3
-  # programs.dconf.enable = true;
-  # programs.firefox = {
-    # enable = true;
-    # preferences = {
-      # "widget.use-xdg-desktop-portal.file-picker" = 1;
-      # "widget.use-xdg-desktop-portal.mime-handler" = 1;
-    # };
-  # };
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
@@ -169,37 +129,7 @@
     whois
     yt-dlp
     zfs
-  #  wget
   ];
-
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-  environment.etc."current-system-packages".text =
-    let
-      packages = builtins.map (p: "${p.name}") config.environment.systemPackages;
-      sortedUnique = builtins.sort builtins.lessThan (pkgs.lib.lists.unique packages);
-      formatted = builtins.concatStringsSep "\n" sortedUnique;
-    in
-      formatted;
-
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
-
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
-
-  # Open ports in the firewall.
-#   networking.firewall.allowedTCPPorts = [ 8080 ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
@@ -208,5 +138,4 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "24.11"; # Did you read the comment?
-
 }

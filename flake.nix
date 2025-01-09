@@ -17,6 +17,7 @@
         system = "x86_64-linux";
         modules = [
           ./modules
+          ./hosts/common.nix
           ./hosts/Yura-PC
         ];
       };
@@ -24,6 +25,7 @@
         system = "x86_64-linux";
         modules = [
           ./modules
+          ./hosts/common.nix
           ./hosts/vm
         ];
       };
@@ -34,6 +36,7 @@
         system = "x86_64-linux";
         modules = [
           ./modules
+          ./hosts/common.nix
           ./hosts/vm
         ];
         format = "proxmox";

@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ lib, config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   imports =
@@ -10,7 +10,7 @@
       ./hardware-configuration.nix
       # <nixpkgs/nixos/modules/profiles/qemu-guest.nix>
     ];
-  common.kb-input.enable = true;
+  mods.kb-input.enable = true;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -49,24 +49,6 @@
   # Enable networking
   networking.networkmanager.enable = true;
 
-  # Set your time zone.
-  time.timeZone = "America/Los_Angeles";
-
-  # Select internationalisation properties.
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
-  };
-
   # Enable the X11 windowing system.
   # You can disable this if you're only using the Wayland session.
   services.xserver.enable = false;
@@ -75,12 +57,6 @@
   services.displayManager.sddm.enable = true;
   services.displayManager.sddm.wayland.enable = true;
   services.desktopManager.plasma6.enable = true;
-
-  # Configure keymap in X11
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
 
   # Enable CUPS to print documents.
   services.printing.enable = true;
@@ -103,7 +79,7 @@
 
   # services.qemuGuest.enable = true;
   # services.spice-vdagentd.enable = true;
-  services.sshd.enable = true;
+  services.openssh.enable = true;
   services.flatpak.enable = true;
   # services.geoclue2.enable = true;
   location.provider = "geoclue2";
@@ -284,17 +260,6 @@
     whois
     yt-dlp
   ];
-
-  # nix.package = pkgs.nixFlakes;
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-  environment.etc."current-system-packages".text =
-    let
-      packages = builtins.map (p: "${p.name}") config.environment.systemPackages;
-      sortedUnique = builtins.sort builtins.lessThan (pkgs.lib.lists.unique packages);
-      formatted = builtins.concatStringsSep "\n" sortedUnique;
-    in
-      formatted;
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.

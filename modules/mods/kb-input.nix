@@ -4,10 +4,10 @@
   lib,
   ...
 }: let
-  cfg = config.common.kb-input;
+  cfg = config.mods.kb-input;
 in {
   options = {
-    common.kb-input = {
+    mods.kb-input = {
       enable = lib.mkEnableOption "input method and custom keyboard layout";
     };
   };
