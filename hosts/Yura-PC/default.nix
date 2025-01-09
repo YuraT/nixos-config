@@ -10,6 +10,7 @@
       ./hardware-configuration.nix
       # <nixpkgs/nixos/modules/profiles/qemu-guest.nix>
     ];
+  common.kb-input.enable = true;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -110,37 +111,6 @@
   security.pam.services.sddm.enableGnomeKeyring = true;
   # security.pam.services.sddm.gnupg.enable = true;
 
-  services.xserver.xkb.extraLayouts = {
-    minimak-4 = {
-      description = "English (US, Minimak-4)";
-      languages = [ "eng" ];
-      # symbolsFile = /etc/nixos/minimak;
-      symbolsFile = ./minimak;
-    };
-    minimak-8 = {
-      description = "English (US, Minimak-8)";
-      languages = [ "eng" ];
-      # symbolsFile = /etc/nixos/minimak;
-      symbolsFile = ./minimak;
-    };
-    minimak-12 = {
-      description = "English (US, Minimak-12)";
-      languages = [ "eng" ];
-      # symbolsFile = /etc/nixos/minimak;
-      symbolsFile = ./minimak;
-    };
-  };
-
-  i18n.inputMethod = {
-    type = "fcitx5";
-    enable = true;
-    fcitx5.waylandFrontend = true;
-    fcitx5.plasma6Support = true;
-    fcitx5.addons = with pkgs; [
-      fcitx5-mozc
-    ];
- };
-
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -158,9 +128,6 @@
     group = "cazzzer";
     extraGroups = [ "networkmanager" "wheel" "docker" "wireshark" "geoclue" ];
     packages = with pkgs; [
-
-      kdePackages.kate
-      kdePackages.yakuake
       python3
       poetry
 
@@ -191,6 +158,9 @@
   programs.gnupg.agent.pinentryPackage = pkgs.pinentry-qt;
   # programs.starship.enable = true;
   programs.wireshark.enable = true;
+  programs.wireshark.package = pkgs.wireshark; # wireshark-cli by default
+  programs.bat.enable = true;
+  programs.htop.enable = true;
 
   # https://nixos.wiki/wiki/Docker
   virtualisation.docker.enable = true;
@@ -263,13 +233,19 @@
   # ];
 
   workarounds.flatpak.enable = true;
-  fonts.packages = with pkgs; [ nerd-fonts.fantasque-sans-mono ];
+  fonts.packages = with pkgs; [
+    fantasque-sans-mono
+    nerd-fonts.fantasque-sans-mono
+    noto-fonts
+    noto-fonts-emoji
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+    jetbrains-mono
+   ];
   # fonts.fontDir.enable = true;
   # fonts.fontconfig.allowBitmaps = false;
   
   environment.systemPackages = with pkgs; [
-    bat
-    # bluez
     darkman
     dust
     efibootmgr
@@ -277,16 +253,15 @@
     fastfetch
     fd
     ffmpeg
-    # flatpak
     host-spawn # for flatpaks
-    kdePackages.flatpak-kcm
     kdePackages.filelight
-    # git
+    kdePackages.flatpak-kcm
+    kdePackages.kate
+    kdePackages.yakuake
     gcr
     gnome-keyring # config for this and some others
     gnumake
     helix
-    htop
     jetbrains-toolbox # or maybe do invidual ones?
     # jetbrains.rust-rover
     # jetbrains.pycharm-professional
@@ -295,11 +270,7 @@
     mediainfo
     micro
     mpv
-    neofetch
-    # neovim
     nextcloud-client
-    noto-fonts-cjk-sans
-    noto-fonts-cjk-serif
     lxqt.pavucontrol-qt
     pinentry
     rbw
@@ -308,15 +279,10 @@
     starship
     tealdeer
     tela-circle-icon-theme
-    fantasque-sans-mono
-    jetbrains-mono
     virt-viewer
     waypipe
     whois
-    # wireshark
     yt-dlp
-  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-  #  wget
   ];
 
   # nix.package = pkgs.nixFlakes;

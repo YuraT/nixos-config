@@ -7,8 +7,12 @@
 {
   imports =
     [ # Include the results of the hardware scan.
-      ./hardware-configuration-vm.nix
+#      ./hardware-configuration-vm.nix
     ];
+  common.kb-input.enable = true;
+
+#  boot.kernelParams = [ "console=tty0" ];
+  proxmox.qemuConf.bios = "ovmf";
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -19,7 +23,7 @@
     "sysrq_always_enabled=1"
   ];
 
-  boot.loader.timeout = 3;
+#  boot.loader.timeout = lib.mkForce 3;
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
   boot.extraModulePackages = with config.boot.kernelPackages; [ zfs ];
@@ -77,37 +81,6 @@
   services.sshd.enable = true;
   services.flatpak.enable = true;
 
-  services.xserver.xkb.extraLayouts = {
-    minimak-4 = {
-      description = "English (US, Minimak-4)";
-      languages = [ "eng" ];
-      # symbolsFile = /etc/nixos/minimak;
-      symbolsFile = ./minimak;
-    };
-    minimak-8 = {
-      description = "English (US, Minimak-8)";
-      languages = [ "eng" ];
-      # symbolsFile = /etc/nixos/minimak;
-      symbolsFile = ./minimak;
-    };
-    minimak-12 = {
-      description = "English (US, Minimak-12)";
-      languages = [ "eng" ];
-      # symbolsFile = /etc/nixos/minimak;
-      symbolsFile = ./minimak;
-    };
-  };
-
-  i18n.inputMethod = {
-    type = "fcitx5";
-    enable = true;
-    fcitx5.waylandFrontend = true;
-    fcitx5.plasma6Support = true;
-    fcitx5.addons = with pkgs; [
-      fcitx5-mozc
-    ];
- };
-
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -119,25 +92,17 @@
     };
   };
   users.users.cazzzer = {
+    password = "";
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPWgEzbEjbbu96MVQzkiuCrw+UGYAXN4sRe2zM6FVopq cazzzer@Yura-PC"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIApFeLVi3BOquL0Rt+gQK2CutNHaBDQ0m4PcGWf9Bc43 cazzzer@Yura-TPX13"
+    ];
     isNormalUser = true;
     description = "Yura";
     uid = 1000;
     group = "cazzzer";
-    extraGroups = [ "networkmanager" "wheel" "docker" "wireshark" ];
-    packages = with pkgs; [
-      # Python
-      # python3
-      # poetry
+    extraGroups = [ "wheel" "docker" "wireshark" ];
 
-      # Haskell
-      # haskellPackages.ghc
-      # haskellPackages.stack
-
-      # Node
-      # nodejs_22
-      # pnpm
-      # bun
-    ];
   };
 
   # Install firefox.
@@ -146,6 +111,10 @@
   programs.git.enable = true;
   programs.lazygit.enable = true;
   programs.neovim.enable = true;
+
+  programs.bat.enable = true;
+  programs.htop.enable = true;
+  programs.wireshark.enable = true;
 
   # https://discourse.nixos.org/t/firefox-does-not-use-kde-window-decorations-and-cursor/32132/3
   # programs.dconf.enable = true;
@@ -166,50 +135,43 @@
   # https://github.com/flatpak/flatpak/issues/2861
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
-  workarounds.flatpak.enable = true;
-  fonts.packages = with pkgs; [ nerd-fonts.fantasque-sans-mono ];
+#  workarounds.flatpak.enable = true;
+  fonts.packages = with pkgs; [
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+    fantasque-sans-mono
+    nerd-fonts.fantasque-sans-mono
+    jetbrains-mono
+  ];
 
   environment.systemPackages = with pkgs; [
-    bat
-    # bluez
     darkman
     dust
     efibootmgr
     eza
     fastfetch
     fd
-    # flatpak
     host-spawn # for flatpaks
     kdePackages.flatpak-kcm
     kdePackages.filelight
     kdePackages.kate
     kdePackages.yakuake
-    # git
     gnumake
     helix
-    htop
     mediainfo
     micro
     mpv
-    neofetch
-    # neovim
-    noto-fonts-cjk-sans
-    noto-fonts-cjk-serif
     ripgrep
     starship
     tealdeer
     tela-circle-icon-theme
-    fantasque-sans-mono
-    jetbrains-mono
     waypipe
     whois
-    # wireshark
     yt-dlp
-  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    zfs
   #  wget
   ];
 
-  # nix.package = pkgs.nixFlakes;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   environment.etc."current-system-packages".text =

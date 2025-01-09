@@ -1,0 +1,5 @@
+{...}: {
+  imports = [
+    ./kb-input.nix
+  ];
+}
