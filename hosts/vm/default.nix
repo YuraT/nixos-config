@@ -13,6 +13,11 @@
 
 #  boot.kernelParams = [ "console=tty0" ];
   proxmox.qemuConf.bios = "ovmf";
+  proxmox.qemuExtraConf = {
+    machine = "q35";
+#    efidisk0 = "local-lvm:vm-9999-disk-1";
+    cpu = "host";
+  };
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -49,15 +54,18 @@
   services.displayManager.sddm.enable = true;
   services.displayManager.sddm.wayland.enable = true;
   services.desktopManager.plasma6.enable = true;
+  services.flatpak.enable = true;
 
   # VM services
   services.cloud-init.enable = true;
+  services.cloud-init.network.enable = false;
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
   services.openssh.settings.KbdInteractiveAuthentication = false;
-  services.flatpak.enable = true;
+
+  security.sudo.wheelNeedsPassword = false;
 
   users.groups = {
     cazzzer = {
@@ -75,7 +83,6 @@
     uid = 1000;
     group = "cazzzer";
     extraGroups = [ "wheel" "docker" "wireshark" ];
-
   };
 
   # Install firefox.
