@@ -240,8 +240,9 @@
     helix
     jetbrains-toolbox # or maybe do invidual ones?
     # jetbrains.rust-rover
-    # jetbrains.pycharm-professional
-    # jetbrains.webstorm
+    jetbrains.clion
+    jetbrains.pycharm-professional
+    jetbrains.webstorm
     android-studio
     mediainfo
     micro
@@ -275,6 +276,7 @@
   # services.openssh.enable = true;
 
   # Open ports in the firewall.
+  # networking.nftables.enable = true;
   networking.firewall.allowedTCPPorts = [ 8080 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
