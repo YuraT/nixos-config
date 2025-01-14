@@ -9,15 +9,7 @@
     [ # Include the results of the hardware scan.
 #      ./hardware-configuration-vm.nix
     ];
-  mods.kb-input.enable = true;
-
-#  boot.kernelParams = [ "console=tty0" ];
-  proxmox.qemuConf.bios = "ovmf";
-  proxmox.qemuExtraConf = {
-    machine = "q35";
-#    efidisk0 = "local-lvm:vm-9999-disk-1";
-    cpu = "host";
-  };
+  mods.kb-input.enable = false;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -28,7 +20,6 @@
     "sysrq_always_enabled=1"
   ];
 
-#  boot.loader.timeout = lib.mkForce 3;
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
   boot.extraModulePackages = with config.boot.kernelPackages; [ zfs ];
@@ -58,7 +49,7 @@
 
   # VM services
   services.cloud-init.enable = true;
-  services.cloud-init.network.enable = false;
+#  services.cloud-init.network.enable = false;
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
   services.openssh.enable = true;
@@ -89,7 +80,6 @@
   programs.firefox.enable = true;
   programs.fish.enable = true;
   programs.git.enable = true;
-  programs.lazygit.enable = true;
   programs.neovim.enable = true;
 
   programs.bat.enable = true;
@@ -112,9 +102,7 @@
   ];
 
   environment.systemPackages = with pkgs; [
-    darkman
     dust
-    efibootmgr
     eza
     fastfetch
     fd
@@ -123,18 +111,14 @@
     kdePackages.filelight
     kdePackages.kate
     kdePackages.yakuake
-    gnumake
-    helix
-    mediainfo
+    ldns
     micro
     mpv
     ripgrep
     starship
     tealdeer
-    tela-circle-icon-theme
     waypipe
     whois
-    yt-dlp
     zfs
   ];
 

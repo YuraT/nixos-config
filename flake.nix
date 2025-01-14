@@ -37,6 +37,7 @@
         modules = [
           ./modules
           ./hosts/common.nix
+          ./hosts/vm/proxmox.nix
           ./hosts/vm
         ];
         format = "proxmox";
