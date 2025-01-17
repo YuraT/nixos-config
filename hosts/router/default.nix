@@ -1,5 +1,9 @@
 { config, lib, pkgs, ... }:
 let
+  # TODO: ULAs for most things
+  # TODO: proper aliases
+  # TODO: refactor the crap out of everything
+
   if_wan = "wan";
   if_lan = "lan";
   if_lan10 = "lan.10";
@@ -156,28 +160,46 @@ in
           Managed = true;
           OtherInformation = true;
           EmitDNS = true;
-          DNS = [ "2606:4700:4700::1111" ];
+          DNS = [ "${lan_p6}::1" ];
         };
       };
       "30-vlan10"  = {
         matchConfig.Name = if_lan10;
         networkConfig = {
           IPv6SendRA = true;
-          Address = [
-            "${lan10_p4}.1/24"
-            "${lan10_p6}::1/64"
-          ];
+          Address = [ "${lan10_p4}.1/24" ];
         };
+        ipv6Prefixes = [
+          {
+            Prefix = "${lan10_p6}::/64";
+            Assign = true;
+            Token = [ "static:::1" "eui64" ];
+          }
+          {
+            Prefix = "${ula_p_lan10}::/64";
+            Assign = true;
+            Token = [ "static:::1" "eui64" ];
+          }
+        ];
       };
       "30-vlan20"  = {
         matchConfig.Name = if_lan20;
         networkConfig = {
           IPv6SendRA = true;
-          Address = [
-            "${lan20_p4}.1/24"
-            "${lan20_p6}::1/64"
-          ];
+          Address = [ "${lan20_p4}.1/24" ];
         };
+        ipv6Prefixes = [
+          {
+            Prefix = "${lan20_p6}::/64";
+            Assign = true;
+            Token = [ "static:::1" "eui64" ];
+          }
+          {
+            Prefix = "${ula_p_lan20}::/64";
+            Assign = true;
+            Token = [ "static:::1" "eui64" ];
+          }
+        ];
       };
     };
   };
@@ -298,7 +320,7 @@ in
           }
           {
             name = "domain-name-servers";
-            data = "1.1.1.1";
+            data = "${lan_p4}.1";
           }
         ];
       }
@@ -326,12 +348,81 @@ in
         option-data = [
           {
             name = "dns-servers";
-            data = "2606:4700:4700::1111";
+            data = "${lan_p6}::1";
           }
         ];
       }
     ];
   };
+
+  services.resolved.enable = false;
+  networking.resolvconf.enable = true;
+  networking.resolvconf.useLocalResolver = true;
+  services.coredns.enable = true;
+  services.coredns.config = ''
+  . {
+      cache {
+          prefetch 100
+      }
+      hosts /etc/coredns.hosts {
+          fallthrough
+      }
+      # Quad9
+      # forward . tls://[2620:fe::fe]:53 tls://9.9.9.9 tls://[2620:fe::9]:53 tls://149.112.112.112 {
+      #    tls_servername dns.quad9.net
+
+      # Cloudflare (seems to be faster)
+      forward . tls://[2606:4700:4700::1112]:53 tls://1.1.1.2 tls://[2606:4700:4700::1002]:53 tls://1.0.0.2 {
+          tls_servername security.cloudflare-dns.com
+          health_check 5s
+      }
+  }
+  '';
+
+  environment.etc."coredns.hosts".text = ''
+    ::1 wow.cazzzer.com hi.cazzzer.com
+  '';
+
+  services.knot.enable = true;
+  services.knot.settings = {
+    server = {
+      # listen = "0.0.0.0@1053";
+      listen = "::@1053";
+    };
+    # TODO: templates
+    zone = [
+      {
+        domain = "l.cazzzer.com";
+        storage = "/var/lib/knot/zones";
+        file = "l.cazzzer.com.zone";
+      }
+    ];
+  };
+  # Ensure the zone file exists
+  system.activationScripts.knotZoneFile = ''
+    ZONE_DIR="/var/lib/knot/zones"
+    ZONE_FILE="$ZONE_DIR/l.cazzzer.com.zone"
+
+    # Create the directory if it doesn't exist
+    mkdir -p "$ZONE_DIR"
+
+    # Check if the zone file exists
+    if [ ! -f "$ZONE_FILE" ]; then
+      # Create the zone file with a basic SOA record
+      # Serial; Refresh; Retry; Expire; Negative Cache TTL;
+      cat > "$ZONE_FILE" <<EOF
+  \$ORIGIN l.cazzzer.com.
+  @ 3600 SOA ns admin 1 86400 900 691200 3600
+  EOF
+      echo "Created new zone file: $ZONE_FILE"
+    else
+      echo "Zone file already exists: $ZONE_FILE"
+    fi
+
+    # Ensure proper ownership and permissions
+    chown -R knot:knot "/var/lib/knot"
+    chmod 644 "$ZONE_FILE"
+  '';
 
   services.netdata.enable = true;
 
