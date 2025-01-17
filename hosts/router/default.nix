@@ -1,95 +1,100 @@
-# Edit this configuration file to define what should be installed on
-# your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
-
 { config, lib, pkgs, ... }:
-
 let
-  lan_ip6 = "fd97:530d:73ec:f00::";
+  if_wan = "wan";
+  if_lan = "lan";
+  if_lan10 = "lan.10";
+  if_lan20 = "lan.20";
+
+  lan_p4 = "10.19.1"; # .0/24
+  lan10_p4 = "10.19.10"; # .0/24
+  lan20_p4 = "10.19.20"; # .0/24
+
+  pd_from_wan = ""; # ::/60
+  lan_p6 = "${pd_from_wan}9"; # ::/64
+  lan10_p6 = "${pd_from_wan}a"; # ::/64
+  lan20_p6 = "${pd_from_wan}2"; # ::/64
+
+  ula_p = "fdab:07d3:581d"; # ::/48
+  ula_p_lan = "${ula_p}:0000"; # ::/56
+  ula_p_lan10 = "${ula_p}:1000"; # ::/56
+  ula_p_lan20 = "${ula_p}:2000"; # ::/56
 in
 {
   imports =
     [ # Include the results of the hardware scan.
-     ./hardware-configuration.nix
+      ./hardware-configuration.nix
     ];
-  mods.kb-input.enable = false;
-  boot.growPartition = true;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.plymouth.enable = true;
-  boot.plymouth.theme = "breeze";
+  boot.loader.efi.canTouchEfiVariables = false;
   boot.kernelParams = [
     "sysrq_always_enabled=1"
   ];
 
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
-  boot.extraModulePackages = with config.boot.kernelPackages; [ zfs ];
+  boot.growPartition = true;
 
   environment.etc.hosts.mode = "0644";
+  networking.hostName = "grouter";
 
-  # managed by cloud-init
-  # networking.hostName = "nixos"; # Define your hostname.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # Enable networking
-#   networking.networkmanager.enable = true;
-
-  # It is impossible to do multiple prefix requests with networkd
+  # It is impossible to do multiple prefix requests with networkd,
+  # so I use dhcpcd for this
   # https://github.com/systemd/systemd/issues/22571
   networking.dhcpcd.enable = true;
   # https://github.com/systemd/systemd/issues/22571#issuecomment-2094905496
   # https://gist.github.com/csamsel/0f8cca3b2e64d7e4cc47819ec5ba9396
   networking.dhcpcd.extraConfig = ''
     duid
-    nodelay
     ipv6only
-    # noarp
-    # nodhcp
     nodhcp6
-    # noipv4
-    # noipv4ll
     noipv6rs
-
     nohook resolv.conf, yp, hostname, ntp
-
     option rapid_commit
 
-    interface wan
+    interface ${if_wan}
       ipv6rs
-      # ipv6ra_noautoconf
       dhcp6
 
-      # iaid 1
-      # ia_na 0
-      ia_na
-      ia_pd 1 lan/0
-      ia_pd 2 lan.10/0
-      ia_pd 3 lan.20/0
+      # this doesn't play well with networkd
+      # ia_na
+      # ia_pd 1 ${if_lan}/0
+      # ia_pd 2 ${if_lan10}/0
+      # ia_pd 3 ${if_lan20}/0
+
+      # request the leases just for routing (so that the att box knows we're here)
+      # actual ip assignments are static, based on $pd_from_wan
+      ia_pd 1 -
+      ia_pd 2 -
+      # ia_pd 3 -
+      # ia_pd 4 -
+      # ia_pd 5 -
+      # ia_pd 6 -
+      # ia_pd 7 -
+      # ia_pd 8 -
   '';
 
   networking.useNetworkd = true;
   systemd.network.enable = true;
   systemd.network = {
+    # Global options
+    config.networkConfig = {
+      IPv4Forwarding = true;
+      IPv6Forwarding = true;
+    };
+
     # This is applied by udev, not networkd
     # https://nixos.wiki/wiki/Systemd-networkd
     # https://nixos.org/manual/nixos/stable/#sec-rename-ifs
     links = {
       "10-wan" = {
-        # matchConfig.Name = "enp6s18";
         matchConfig.PermanentMACAddress = "bc:24:11:4f:c9:c4";
-        linkConfig.Name = "wan";
+        linkConfig.Name = if_wan;
       };
       "10-lan" = {
-        # matchConfig.Name = "enp6s18";
         matchConfig.PermanentMACAddress = "bc:24:11:83:d8:de";
-        linkConfig.Name = "lan";
+        linkConfig.Name = if_lan;
       };
     };
 
@@ -97,14 +102,14 @@ in
       "10-vlan10" = {
         netdevConfig = {
           Kind = "vlan";
-          Name = "lan.10";
+          Name = if_lan10;
         };
         vlanConfig.Id = 10;
       };
       "10-vlan20" = {
         netdevConfig = {
           Kind = "vlan";
-          Name = "lan.20";
+          Name = if_lan20;
         };
         vlanConfig.Id = 20;
       };
@@ -112,62 +117,169 @@ in
 
     networks = {
       "10-wan" = {
-        matchConfig.Name = "wan";
+        matchConfig.Name = if_wan;
         networkConfig = {
           # start a DHCP Client for IPv4 Addressing/Routing
           DHCP = "ipv4";
           # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
-          # let dhcpcd manage this
+          # let dhcpcd handle this
           IPv6AcceptRA = false;
         };
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
-
       };
       "20-lan" = {
         matchConfig.Name = "lan";
         vlan = [
-          "lan.10"
-          "lan.20"
+          if_lan10
+          if_lan20
         ];
         networkConfig = {
+          IPv4Forwarding = true;
           IPv6SendRA = true;
-          Address = [ "10.19.1.1/24" ];
-          # IPMasquerade = "ipv4";
-          IPMasquerade = "both";
-          # DHCPServer = true;
-          # DHCPPrefixDelegation = true;
+          Address = [ "${lan_p4}.1/24" ];
         };
-#         dhcpServerConfig = {
-#           PoolOffset = 100;
-#           PoolSize = 100;
-#         };
-#         dhcpPrefixDelegationConfig = {
-#           UplinkInterface = "enp6s18";
-#           SubnetId = 0;
-#           Token = "static:::1";
-#         };
+        ipv6Prefixes = [
+          {
+            # AddressAutoconfiguration = false;
+            Prefix = "${lan_p6}::/64";
+            Assign = true;
+            Token = [ "static:::1" "eui64" ];
+          }
+          {
+            Prefix = "${ula_p_lan}::/64";
+            Assign = true;
+            Token = [ "static:::1" "eui64" ];
+          }
+        ];
+        ipv6SendRAConfig = {
+          Managed = true;
+          OtherInformation = true;
+          EmitDNS = true;
+          DNS = [ "2606:4700:4700::1111" ];
+        };
       };
       "30-vlan10"  = {
-        matchConfig.Name = "lan.10";
+        matchConfig.Name = if_lan10;
         networkConfig = {
           IPv6SendRA = true;
+          Address = [
+            "${lan10_p4}.1/24"
+            "${lan10_p6}::1/64"
+          ];
         };
       };
       "30-vlan20"  = {
-        matchConfig.Name = "lan.20";
+        matchConfig.Name = if_lan20;
         networkConfig = {
           IPv6SendRA = true;
+          Address = [
+            "${lan20_p4}.1/24"
+            "${lan20_p6}::1/64"
+          ];
         };
       };
     };
+  };
+
+  networking.firewall.enable = false;
+  networking.nftables.enable = true;
+  networking.nftables.tables.firewall = {
+    family = "inet";
+    content = ''
+      define WAN_IF = "${if_wan}"
+      define LAN_IF = "${if_lan}"
+      define LAN_IPV4_SUBNET = ${lan_p4}.0/24
+      define LAN_IPV6_SUBNET = ${lan_p6}::/64
+      define LAN_IPV4_HOST = ${lan_p4}.100
+      define LAN_IPV6_HOST = ${lan_p6}::1:1000
+
+      define ALLOWED_TCP_PORTS = { ssh, 19999 }
+      define ALLOWED_UDP_PORTS = { 53 }
+
+      chain input {
+          type filter hook input priority filter; policy drop;
+          # type filter hook input priority filter; policy accept;
+
+          # Allow established and related connections
+          ct state established,related accept
+
+          # Allow all traffic from loopback interface
+          iifname lo accept
+
+          # Allow ICMPv6 on link local addrs
+          ip6 nexthdr icmpv6 ip6 saddr fe80::/10 accept
+          ip6 nexthdr icmpv6 ip6 daddr fe80::/10 accept # TODO: not sure if necessary
+
+          # Allow all ICMPv6 from LAN
+          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET ip6 nexthdr icmpv6 accept
+          # Allow DHCPv6 client traffic
+          ip6 daddr { fe80::/10, ff02::/16 } udp dport dhcpv6-server accept
+
+          # Allow all ICMP from LAN
+          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET ip protocol icmp accept
+
+          # Allow specific services from LAN
+          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET tcp dport $ALLOWED_TCP_PORTS accept
+          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET tcp dport $ALLOWED_TCP_PORTS accept
+          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET udp dport $ALLOWED_UDP_PORTS accept
+          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET udp dport $ALLOWED_UDP_PORTS accept
+
+          # Allow SSH from WAN (if needed)
+          iifname $WAN_IF tcp dport ssh accept
+      }
+
+      chain forward {
+          type filter hook forward priority filter; policy drop;
+          # type filter hook forward priority filter; policy accept;
+
+          # Allow established and related connections
+          ct state established,related accept
+
+          # Port forwarding
+          iifname $WAN_IF tcp dport https ip daddr $LAN_IPV4_HOST accept
+
+          # Allowed IPv6 ports
+          iifname $WAN_IF tcp dport https ip6 daddr $LAN_IPV6_HOST accept
+
+          # Allow traffic from LAN to WAN
+          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET oifname $WAN_IF accept
+          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET oifname $WAN_IF accept
+      }
+
+      chain output {
+          # Accept anything out of self by default
+          type filter hook output priority filter; policy accept;
+      }
+
+      chain prerouting {
+          # Initial step, accept by default
+          type nat hook prerouting priority dstnat; policy accept;
+
+          # Port forwarding
+          iifname $WAN_IF tcp dport https dnat ip to $LAN_IPV4_HOST
+      }
+
+      chain postrouting {
+          # Last step, accept by default
+          type nat hook postrouting priority srcnat; policy accept;
+
+          # Masquerade LAN addrs
+          # theoretically shouldn't need to check the input interface here,
+          # as it would be filtered by the forwarding rules
+          oifname $WAN_IF ip saddr $LAN_IPV4_SUBNET masquerade
+
+          # Optional IPv6 masquerading (big L if enabled)
+          # oifname $WAN_IF ip6 saddr $LAN_IPV6_SUBNET masquerade
+      }
+    '';
   };
 
   services.kea.dhcp4.enable = true;
   services.kea.dhcp4.settings = {
     interfaces-config = {
       interfaces = [
-        "lan"
+        if_lan
       ];
     };
     lease-database = {
@@ -177,12 +289,12 @@ in
     subnet4 = [
       {
         id = 1;
-        subnet = "10.19.1.0/24";
-        pools = [ { pool = "10.19.1.100 - 10.19.1.199"; } ];
+        subnet = "${lan_p4}.0/24";
+        pools = [ { pool = "${lan_p4}.100 - ${lan_p4}.199"; } ];
         option-data = [
           {
             name = "routers";
-            data = "10.19.1.1";
+            data = "${lan_p4}.1";
           }
           {
             name = "domain-name-servers";
@@ -197,7 +309,7 @@ in
   services.kea.dhcp6.settings = {
     interfaces-config = {
       interfaces = [
-        "lan"
+        if_lan
       ];
     };
     lease-database = {
@@ -207,9 +319,15 @@ in
     subnet6 = [
       {
         id = 1;
-        subnet = "${lan_ip6}/64";
-        pools = [ { pool = "${lan_ip6}1:1000/116"; } ];
+        interface = if_lan;
+        subnet = "${lan_p6}::/64";
+        rapid-commit = true;
+        pools = [ { pool = "${lan_p6}::1:1000/116"; } ];
         option-data = [
+          {
+            name = "dns-servers";
+            data = "2606:4700:4700::1111";
+          }
         ];
       }
     ];
@@ -222,14 +340,14 @@ in
   services.xserver.enable = false;
 
   # Enable the KDE Plasma Desktop Environment.
-  services.displayManager.sddm.enable = true;
+  # Useful for debugging with wireshark.
+  services.displayManager.sddm.enable = false;
   services.displayManager.sddm.wayland.enable = true;
   services.desktopManager.plasma6.enable = true;
-  services.flatpak.enable = true;
+  # No need for audio in VM
+  services.pipewire.enable = false;
 
   # VM services
-  services.cloud-init.enable = true;
-#  services.cloud-init.network.enable = false;
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
   services.openssh.enable = true;
@@ -256,53 +374,34 @@ in
     extraGroups = [ "wheel" "docker" "wireshark" ];
   };
 
-  # Install firefox.
   programs.firefox.enable = true;
   programs.fish.enable = true;
   programs.git.enable = true;
   programs.neovim.enable = true;
-
   programs.bat.enable = true;
   programs.htop.enable = true;
   programs.wireshark.enable = true;
-
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
-
-  # https://github.com/flatpak/flatpak/issues/2861
-  xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-
-#  workarounds.flatpak.enable = true;
-  fonts.packages = with pkgs; [
-    noto-fonts-cjk-sans
-    noto-fonts-cjk-serif
-    fantasque-sans-mono
-    nerd-fonts.fantasque-sans-mono
-    jetbrains-mono
-  ];
+  programs.wireshark.package = pkgs.wireshark; # wireshark-cli by default
 
   environment.systemPackages = with pkgs; [
     dust
     eza
     fastfetch
     fd
-    host-spawn # for flatpaks
-    kdePackages.flatpak-kcm
     kdePackages.filelight
     kdePackages.kate
     kdePackages.yakuake
     ldns
+    lsof
     micro
     mpv
     ripgrep
+    rustscan
     starship
     tealdeer
     waypipe
     whois
-    zfs
   ];
-
-  # networking.firewall.enable = false;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
