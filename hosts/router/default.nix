@@ -1,13 +1,15 @@
 { config, lib, pkgs, ... }:
 let
-  # TODO: ULAs for most things
-  # TODO: proper aliases
-  # TODO: refactor the crap out of everything
+  domain = "cazzzer.com";
+  ldomain = "l.${domain}";
 
   if_wan = "wan";
   if_lan = "lan";
   if_lan10 = "lan.10";
   if_lan20 = "lan.20";
+
+  wan_ip4 = "192.168.1.61/24";
+  wan_gw4 = "192.168.1.254";
 
   lan_p4 = "10.19.1"; # .0/24
   lan10_p4 = "10.19.10"; # .0/24
@@ -19,9 +21,9 @@ let
   lan20_p6 = "${pd_from_wan}2"; # ::/64
 
   ula_p = "fdab:07d3:581d"; # ::/48
-  ula_p_lan = "${ula_p}:0000"; # ::/56
-  ula_p_lan10 = "${ula_p}:1000"; # ::/56
-  ula_p_lan20 = "${ula_p}:2000"; # ::/56
+  ula_p_lan = "${ula_p}:0001"; # ::/64
+  ula_p_lan10 = "${ula_p}:0010"; # ::/64
+  ula_p_lan20 = "${ula_p}:0020"; # ::/64
 in
 {
   imports =
@@ -124,11 +126,13 @@ in
         matchConfig.Name = if_wan;
         networkConfig = {
           # start a DHCP Client for IPv4 Addressing/Routing
-          DHCP = "ipv4";
+          # DHCP = "ipv4";
           # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
           # let dhcpcd handle this
+          Address = [ wan_ip4 ];
           IPv6AcceptRA = false;
         };
+        routes = [ { Gateway = wan_gw4; } ];
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
       };
@@ -299,19 +303,16 @@ in
 
   services.kea.dhcp4.enable = true;
   services.kea.dhcp4.settings = {
-    interfaces-config = {
-      interfaces = [
-        if_lan
-      ];
-    };
-    lease-database = {
-      type = "memfile";
-      persist = true;
-    };
+    interfaces-config.interfaces = [
+      if_lan
+    ];
+    dhcp-ddns.enable-updates = true;
+    ddns-qualifying-suffix = "default.${ldomain}";
     subnet4 = [
       {
         id = 1;
         subnet = "${lan_p4}.0/24";
+        ddns-qualifying-suffix = "lan.${ldomain}";
         pools = [ { pool = "${lan_p4}.100 - ${lan_p4}.199"; } ];
         option-data = [
           {
@@ -323,26 +324,31 @@ in
             data = "${lan_p4}.1";
           }
         ];
+        reservations = [
+          {
+            hw-address = "bc:24:11:b7:27:4d";
+            hostname = "archy";
+            ip-address = "${lan_p4}.69";
+          }
+        ];
       }
     ];
   };
 
   services.kea.dhcp6.enable = true;
   services.kea.dhcp6.settings = {
-    interfaces-config = {
-      interfaces = [
-        if_lan
-      ];
-    };
-    lease-database = {
-      type = "memfile";
-      persist = true;
-    };
+    interfaces-config.interfaces = [
+      if_lan
+    ];
+    # TODO: https://kea.readthedocs.io/en/latest/arm/ddns.html#dual-stack-environments
+    dhcp-ddns.enable-updates = false;
+    ddns-qualifying-suffix = "default.${ldomain}";
     subnet6 = [
       {
         id = 1;
         interface = if_lan;
         subnet = "${lan_p6}::/64";
+        ddns-qualifying-suffix = "lan.${ldomain}";
         rapid-commit = true;
         pools = [ { pool = "${lan_p6}::1:1000/116"; } ];
         option-data = [
@@ -355,6 +361,23 @@ in
     ];
   };
 
+  services.kea.dhcp-ddns.enable = true;
+  services.kea.dhcp-ddns.settings = {
+    forward-ddns = {
+      ddns-domains = [
+        {
+          name = "${ldomain}.";
+          dns-servers = [
+            {
+              ip-address = "::1";
+              port = 1053;
+            }
+          ];
+        }
+      ];
+    };
+  };
+
   services.resolved.enable = false;
   networking.resolvconf.enable = true;
   networking.resolvconf.useLocalResolver = true;
@@ -364,9 +387,13 @@ in
       cache {
           prefetch 100
       }
+      # Static aliases
       hosts /etc/coredns.hosts {
           fallthrough
       }
+      # Local domains to knot (ddns)
+      forward ${ldomain}. [::1]:1053
+
       # Quad9
       # forward . tls://[2620:fe::fe]:53 tls://9.9.9.9 tls://[2620:fe::9]:53 tls://149.112.112.112 {
       #    tls_servername dns.quad9.net
@@ -380,28 +407,36 @@ in
   '';
 
   environment.etc."coredns.hosts".text = ''
-    ::1 wow.cazzzer.com hi.cazzzer.com
+    ::1 wow.${domain} hi.${domain}
   '';
 
   services.knot.enable = true;
   services.knot.settings = {
     server = {
       # listen = "0.0.0.0@1053";
-      listen = "::@1053";
+      listen = "::1@1053";
     };
     # TODO: templates
     zone = [
       {
-        domain = "l.cazzzer.com";
+        domain = ldomain;
         storage = "/var/lib/knot/zones";
-        file = "l.cazzzer.com.zone";
+        file = "${ldomain}.zone";
+        acl = [ "allow_localhost_update" ];
+      }
+    ];
+    acl = [
+      {
+        id = "allow_localhost_update";
+        address = [ "::1" "127.0.0.1" ];
+        action = [ "update" ];
       }
     ];
   };
   # Ensure the zone file exists
   system.activationScripts.knotZoneFile = ''
     ZONE_DIR="/var/lib/knot/zones"
-    ZONE_FILE="$ZONE_DIR/l.cazzzer.com.zone"
+    ZONE_FILE="$ZONE_DIR/${ldomain}.zone"
 
     # Create the directory if it doesn't exist
     mkdir -p "$ZONE_DIR"
@@ -410,10 +445,7 @@ in
     if [ ! -f "$ZONE_FILE" ]; then
       # Create the zone file with a basic SOA record
       # Serial; Refresh; Retry; Expire; Negative Cache TTL;
-      cat > "$ZONE_FILE" <<EOF
-  \$ORIGIN l.cazzzer.com.
-  @ 3600 SOA ns admin 1 86400 900 691200 3600
-  EOF
+      echo "${ldomain}. 3600 SOA ns.${ldomain}. admin.${ldomain}. 1 86400 900 691200 3600" > "$ZONE_FILE"
       echo "Created new zone file: $ZONE_FILE"
     else
       echo "Zone file already exists: $ZONE_FILE"
