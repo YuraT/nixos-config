@@ -21,9 +21,12 @@ let
   lan20_p6 = "${pd_from_wan}2"; # ::/64
 
   ula_p = "fdab:07d3:581d"; # ::/48
-  ula_p_lan = "${ula_p}:0001"; # ::/64
-  ula_p_lan10 = "${ula_p}:0010"; # ::/64
-  ula_p_lan20 = "${ula_p}:0020"; # ::/64
+  lan_ula_p = "${ula_p}:0001"; # ::/64
+  lan10_ula_p = "${ula_p}:0010"; # ::/64
+  lan20_ula_p = "${ula_p}:0020"; # ::/64
+  lan_ula_addr = "${lan_ula_p}::1";
+  lan10_ula_addr = "${lan10_ula_p}::1";
+  lan20_ula_addr = "${lan20_ula_p}::1";
 in
 {
   imports =
@@ -152,19 +155,20 @@ in
             # AddressAutoconfiguration = false;
             Prefix = "${lan_p6}::/64";
             Assign = true;
-            Token = [ "static:::1" "eui64" ];
+            # Token = [ "static:::1" "eui64" ];
+            Token = [ "static:::1" ];
           }
           {
-            Prefix = "${ula_p_lan}::/64";
+            Prefix = "${lan_ula_p}::/64";
             Assign = true;
-            Token = [ "static:::1" "eui64" ];
+            Token = [ "static:::1" ];
           }
         ];
         ipv6SendRAConfig = {
           Managed = true;
           OtherInformation = true;
           EmitDNS = true;
-          DNS = [ "${lan_p6}::1" ];
+          DNS = [ lan_ula_addr ];
         };
       };
       "30-vlan10"  = {
@@ -177,12 +181,12 @@ in
           {
             Prefix = "${lan10_p6}::/64";
             Assign = true;
-            Token = [ "static:::1" "eui64" ];
+            Token = [ "static:::1" ];
           }
           {
-            Prefix = "${ula_p_lan10}::/64";
+            Prefix = "${lan10_ula_p}::/64";
             Assign = true;
-            Token = [ "static:::1" "eui64" ];
+            Token = [ "static:::1" ];
           }
         ];
       };
@@ -196,12 +200,12 @@ in
           {
             Prefix = "${lan20_p6}::/64";
             Assign = true;
-            Token = [ "static:::1" "eui64" ];
+            Token = [ "static:::1" ];
           }
           {
-            Prefix = "${ula_p_lan20}::/64";
+            Prefix = "${lan20_ula_p}::/64";
             Assign = true;
-            Token = [ "static:::1" "eui64" ];
+            Token = [ "static:::1" ];
           }
         ];
       };
@@ -217,6 +221,7 @@ in
       define LAN_IF = "${if_lan}"
       define LAN_IPV4_SUBNET = ${lan_p4}.0/24
       define LAN_IPV6_SUBNET = ${lan_p6}::/64
+      define LAN_IPV6_ULA = ${lan_ula_p}::/64
       define LAN_IPV4_HOST = ${lan_p4}.100
       define LAN_IPV6_HOST = ${lan_p6}::1:1000
 
@@ -225,7 +230,6 @@ in
 
       chain input {
           type filter hook input priority filter; policy drop;
-          # type filter hook input priority filter; policy accept;
 
           # Allow established and related connections
           ct state established,related accept
@@ -238,7 +242,7 @@ in
           ip6 nexthdr icmpv6 ip6 daddr fe80::/10 accept # TODO: not sure if necessary
 
           # Allow all ICMPv6 from LAN
-          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET ip6 nexthdr icmpv6 accept
+          iifname $LAN_IF ip6 saddr { $LAN_IPV6_SUBNET, $LAN_IPV6_ULA } ip6 nexthdr icmpv6 accept
           # Allow DHCPv6 client traffic
           ip6 daddr { fe80::/10, ff02::/16 } udp dport dhcpv6-server accept
 
@@ -247,9 +251,9 @@ in
 
           # Allow specific services from LAN
           iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET tcp dport $ALLOWED_TCP_PORTS accept
-          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET tcp dport $ALLOWED_TCP_PORTS accept
+          iifname $LAN_IF ip6 saddr { $LAN_IPV6_SUBNET, $LAN_IPV6_ULA } tcp dport $ALLOWED_TCP_PORTS accept
           iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET udp dport $ALLOWED_UDP_PORTS accept
-          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET udp dport $ALLOWED_UDP_PORTS accept
+          iifname $LAN_IF ip6 saddr { $LAN_IPV6_SUBNET, $LAN_IPV6_ULA } udp dport $ALLOWED_UDP_PORTS accept
 
           # Allow SSH from WAN (if needed)
           iifname $WAN_IF tcp dport ssh accept
@@ -257,7 +261,6 @@ in
 
       chain forward {
           type filter hook forward priority filter; policy drop;
-          # type filter hook forward priority filter; policy accept;
 
           # Allow established and related connections
           ct state established,related accept
@@ -296,7 +299,7 @@ in
           oifname $WAN_IF ip saddr $LAN_IPV4_SUBNET masquerade
 
           # Optional IPv6 masquerading (big L if enabled)
-          # oifname $WAN_IF ip6 saddr $LAN_IPV6_SUBNET masquerade
+          # oifname $WAN_IF ip6 saddr $LAN_IPV6_ULA masquerade
       }
     '';
   };
@@ -341,20 +344,21 @@ in
       if_lan
     ];
     # TODO: https://kea.readthedocs.io/en/latest/arm/ddns.html#dual-stack-environments
-    dhcp-ddns.enable-updates = false;
-    ddns-qualifying-suffix = "default.${ldomain}";
+    dhcp-ddns.enable-updates = true;
+    ddns-qualifying-suffix = "default6.${ldomain}";
     subnet6 = [
       {
         id = 1;
         interface = if_lan;
         subnet = "${lan_p6}::/64";
-        ddns-qualifying-suffix = "lan.${ldomain}";
+        ddns-qualifying-suffix = "lan6.${ldomain}";
         rapid-commit = true;
         pools = [ { pool = "${lan_p6}::1:1000/116"; } ];
-        option-data = [
+        reservations = [
           {
-            name = "dns-servers";
-            data = "${lan_p6}::1";
+            duid = "00:04:59:c3:ce:9a:08:cf:fb:b7:fe:74:9c:e3:b7:44:bf:01";
+            hostname = "archy";
+            ip-addresses = [ "${lan_p6}::69" ];
           }
         ];
       }
