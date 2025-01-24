@@ -225,8 +225,8 @@ in
       define LAN_IPV4_HOST = ${lan_p4}.100
       define LAN_IPV6_HOST = ${lan_p6}::1:1000
 
-      define ALLOWED_TCP_PORTS = { ssh, 19999 }
-      define ALLOWED_UDP_PORTS = { 53 }
+      define ALLOWED_TCP_PORTS = { ssh, https, 19999 }
+      define ALLOWED_UDP_PORTS = { domain }
 
       chain input {
           type filter hook input priority filter; policy drop;
@@ -412,6 +412,7 @@ in
 
   environment.etc."coredns.hosts".text = ''
     ::1 wow.${domain} hi.${domain}
+    ${lan_ula_addr} grouter.${domain}
   '';
 
   services.knot.enable = true;
@@ -460,7 +461,50 @@ in
     chmod 644 "$ZONE_FILE"
   '';
 
-  services.netdata.enable = true;
+  # https://wiki.nixos.org/wiki/Prometheus
+  services.prometheus = {
+    enable = true;
+    exporters = {
+      # TODO: CoreDNS, Kea, Knot, other exporters
+      node = {
+        enable = true;
+        enabledCollectors = [ "systemd" ];
+      };
+    };
+    scrapeConfigs = [
+      {
+        job_name = "node";
+        static_configs = [{
+          targets = [ "localhost:${toString config.services.prometheus.exporters.node.port}" ];
+        }];
+      }
+    ];
+  };
+
+  # https://wiki.nixos.org/wiki/Grafana#Declarative_configuration
+  services.grafana = {
+    enable = true;
+    provision = {
+      enable = true;
+      datasources.settings.datasources = [
+        {
+          name = "Prometheus";
+          type = "prometheus";
+          url = "http://localhost:${toString config.services.prometheus.port}";
+        }
+      ];
+    };
+  };
+
+  services.caddy = {
+    enable = true;
+    virtualHosts."grouter.${domain}".extraConfig = ''
+      reverse_proxy localhost:${toString config.services.grafana.settings.server.http_port}
+      tls internal
+    '';
+  };
+
+  # services.netdata.enable = true;
 
   # Enable the X11 windowing system.
   # You can disable this if you're only using the Wayland session.
