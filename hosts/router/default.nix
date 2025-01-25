@@ -385,35 +385,26 @@ in
   services.resolved.enable = false;
   networking.resolvconf.enable = true;
   networking.resolvconf.useLocalResolver = true;
-  services.coredns.enable = true;
-  services.coredns.config = ''
-  . {
-      cache {
-          prefetch 100
-      }
-      # Static aliases
-      hosts /etc/coredns.hosts {
-          fallthrough
-      }
-      # Local domains to knot (ddns)
-      forward ${ldomain}. [::1]:1053
 
-      # Quad9
-      # forward . tls://[2620:fe::fe]:53 tls://9.9.9.9 tls://[2620:fe::9]:53 tls://149.112.112.112 {
-      #    tls_servername dns.quad9.net
+  services.adguardhome.enable = true;
+  services.adguardhome.mutableSettings = false;
+  services.adguardhome.settings = {
+    dns = {
+      bootstrap_dns = [ "1.1.1.1" "9.9.9.9" ];
+      upstream_dns = [
+        "quic://p0.freedns.controld.com"  # Default upstream
+        "[/${ldomain}/][::1]:1053"        # Local domains to Knot (ddns)
+      ];
+    };
+    # https://adguard-dns.io/kb/general/dns-filtering-syntax/
+    user_rules = [
+      # DNS rewrites
+      "|grouter.${domain}^$dnsrewrite=${lan_ula_addr}"
 
-      # Cloudflare (seems to be faster)
-      forward . tls://[2606:4700:4700::1112]:53 tls://1.1.1.2 tls://[2606:4700:4700::1002]:53 tls://1.0.0.2 {
-          tls_servername security.cloudflare-dns.com
-          health_check 5s
-      }
-  }
-  '';
-
-  environment.etc."coredns.hosts".text = ''
-    ::1 wow.${domain} hi.${domain}
-    ${lan_ula_addr} grouter.${domain}
-  '';
+      # Allowed exceptions
+      "@@||googleads.g.doubleclick.net"
+    ];
+  };
 
   services.knot.enable = true;
   services.knot.settings = {
@@ -465,7 +456,7 @@ in
   services.prometheus = {
     enable = true;
     exporters = {
-      # TODO: CoreDNS, Kea, Knot, other exporters
+      # TODO: DNS, Kea, Knot, other exporters
       node = {
         enable = true;
         enabledCollectors = [ "systemd" ];
@@ -484,6 +475,7 @@ in
   # https://wiki.nixos.org/wiki/Grafana#Declarative_configuration
   services.grafana = {
     enable = true;
+    settings.server.http_port = 3001;
     provision = {
       enable = true;
       datasources.settings.datasources = [
