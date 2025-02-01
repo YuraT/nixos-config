@@ -23,10 +23,16 @@
     "sysrq_always_enabled=1"
   ];
 
+  # https://nixos.wiki/wiki/OSX-KVM
+  boot.extraModprobeConfig = ''
+    options kvm_amd nested=1
+    options kvm_amd emulate_invalid_guest_state=0
+    options kvm ignore_msrs=1
+  '';
+
   boot.loader.timeout = 3;
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
-  boot.extraModulePackages = with config.boot.kernelPackages; [ zfs ];
 
   # https://nixos.wiki/wiki/Accelerated_Video_Playback
   hardware.graphics = {
@@ -104,6 +110,7 @@
     group = "cazzzer";
     extraGroups = [ "networkmanager" "wheel" "docker" "wireshark" "geoclue" ];
     packages = with pkgs; [
+      # Python
       python3
       poetry
 
@@ -115,6 +122,9 @@
       nodejs_22
       pnpm
       bun
+
+      # Nix
+      nixd
     ];
   };
 
@@ -143,7 +153,6 @@
   virtualisation.docker.enableOnBoot = false;
   virtualisation.docker.package = pkgs.docker_27;
   virtualisation.docker.storageDriver = "zfs";
-  
 
   # https://discourse.nixos.org/t/firefox-does-not-use-kde-window-decorations-and-cursor/32132/3
   # programs.dconf.enable = true;
@@ -171,31 +180,6 @@
     
     # For JetBrains stuff
     # https://github.com/NixOS/nixpkgs/issues/240444
-    curl
-    expat
-    fontconfig
-    freetype
-    fuse
-    fuse3
-    glib
-    icu
-    libclang.lib
-    libdbusmenu
-    libsecret
-    libxcrypt-legacy
-    libxml2
-    nss
-    openssl
-    python3
-    stdenv.cc.cc
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXext
-    xorg.libXi
-    xorg.libXrender
-    xorg.libXtst
-    xz
-    zlib
   ];
 
   # attempt to fix flatpak firefox cjk fonts

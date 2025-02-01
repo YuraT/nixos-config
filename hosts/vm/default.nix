@@ -22,7 +22,6 @@
 
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
-  boot.extraModulePackages = with config.boot.kernelPackages; [ zfs ];
 
   environment.etc.hosts.mode = "0644";
 

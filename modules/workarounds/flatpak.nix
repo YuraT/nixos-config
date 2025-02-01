@@ -24,7 +24,7 @@ in {
       aggregated = pkgs.buildEnv {
         name = "system-fonts-and-icons";
         paths = builtins.attrValues {
-          inherit (pkgs.libsForQt5) breeze-qt5;
+          inherit (pkgs.kdePackages) breeze;
           inherit
             (pkgs)
             noto-fonts
