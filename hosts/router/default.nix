@@ -3,30 +3,104 @@ let
   domain = "cazzzer.com";
   ldomain = "l.${domain}";
 
-  if_wan = "wan";
-  if_lan = "lan";
-  if_lan10 = "lan.10";
-  if_lan20 = "lan.20";
+  mkIfConfig = {
+    name_,
+    p4_,  # /24
+    p6_,  # /64
+    ulaPrefix_,  # /64
+    token? 1,
+    }: rec {
+      name = name_;
+      p4 = p4_;
+      p4Size = 24;
+      net4 = "${p4}.0/${toString p4Size}";
+      addr4 = "${p4}.${toString token}";
+      addr4Sized = "${addr4}/${toString p4Size}";
+      p6 = p6_;
+      p6Size = 64;
+      net6 = "${p6}::/${toString p6Size}";
+      ip6Token = "::${toString token}";
+      addr6 = "${p6}${ip6Token}";
+      addr6Sized = "${addr6}/${toString p6Size}";
+      ulaPrefix = ulaPrefix_;
+      ulaSize = 64;
+      ulaNet = "${ulaPrefix}::/${toString ulaSize}";
+      ulaAddr = "${ulaPrefix}${ip6Token}";
+      ulaAddrSized = "${ulaAddr}/${toString ulaSize}";
+    };
 
-  wan_ip4 = "192.168.1.61/24";
-  wan_gw4 = "192.168.1.254";
+  p4 = "10.19";                      # .0.0/16
+  pdFromWan = "";  # ::/60
+  ulaPrefix = "fdab:07d3:581d";      # ::/48
+  ifs = rec {
+    wan = rec {
+      name = "wan";
+      addr4 = "192.168.1.61";
+      addr4Sized = "${addr4}/24";
+      gw4 = "192.168.1.254";
+    };
+    lan = mkIfConfig {
+      name_ = "lan";
+      p4_ = "${p4}.1";                   # .0/24
+      p6_ = "${pdFromWan}9";             # ::/64
+      ulaPrefix_ = "${ulaPrefix}:0001";  # ::/64
+    };
+    lan10 = mkIfConfig {
+      name_ = "${lan.name}.10";
+      p4_ = "${p4}.10";                  # .0/24
+      p6_ = "${pdFromWan}a";             # ::/64
+      ulaPrefix_ = "${ulaPrefix}:0010";  # ::/64
+    };
+    lan20 = mkIfConfig {
+      name_ = "${lan.name}.20";
+      p4_ = "${p4}.20";                  # .0/24
+      p6_ = "${pdFromWan}2";             # ::/64
+      ulaPrefix_ = "${ulaPrefix}:0020";  # ::/64
+    };
+    lan50 = mkIfConfig {
+      name_ = "${lan.name}.50";
+      p4_ = "10.17.50";                  # .0/24 TODO: change to p4 later
+      p6_ = "${pdFromWan}a";             # ::/64
+      ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
+    };
+  };
 
-  lan_p4 = "10.19.1"; # .0/24
-  lan10_p4 = "10.19.10"; # .0/24
-  lan20_p4 = "10.19.20"; # .0/24
-
-  pd_from_wan = ""; # ::/60
-  lan_p6 = "${pd_from_wan}9"; # ::/64
-  lan10_p6 = "${pd_from_wan}a"; # ::/64
-  lan20_p6 = "${pd_from_wan}2"; # ::/64
-
-  ula_p = "fdab:07d3:581d"; # ::/48
-  lan_ula_p = "${ula_p}:0001"; # ::/64
-  lan10_ula_p = "${ula_p}:0010"; # ::/64
-  lan20_ula_p = "${ula_p}:0020"; # ::/64
-  lan_ula_addr = "${lan_ula_p}::1";
-  lan10_ula_addr = "${lan10_ula_p}::1";
-  lan20_ula_addr = "${lan20_ula_p}::1";
+  mkVlanDev = { id, name }:
+    {
+      netdevConfig = {
+        Kind = "vlan";
+        Name = name;
+      };
+      vlanConfig.Id = id;
+    };
+  mkLanConfig = ifObj:
+    {
+      matchConfig.Name = ifObj.name;
+      networkConfig = {
+        IPv4Forwarding = true;
+        IPv6SendRA = true;
+        Address = [ ifObj.addr4Sized ];
+      };
+      ipv6Prefixes = [
+        {
+          Prefix = ifObj.net6;
+          Assign = true;
+          # Token = [ "static::1" "eui64" ];
+          Token = [ "static:${ifObj.ip6Token}" ];
+        }
+        {
+          Prefix = ifObj.ulaNet;
+          Assign = true;
+          Token = [ "static:${ifObj.ip6Token}" ];
+        }
+      ];
+      ipv6SendRAConfig = {
+        Managed = true;
+        OtherInformation = true;
+        EmitDNS = true;
+        DNS = [ ifObj.ulaAddr ];
+      };
+    };
 in
 {
   imports =
@@ -41,11 +115,11 @@ in
     "sysrq_always_enabled=1"
   ];
 
+  boot.loader.timeout = 2;
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
   boot.growPartition = true;
 
-  environment.etc.hosts.mode = "0644";
   networking.hostName = "grouter";
 
   # It is impossible to do multiple prefix requests with networkd,
@@ -62,18 +136,18 @@ in
     nohook resolv.conf, yp, hostname, ntp
     option rapid_commit
 
-    interface ${if_wan}
+    interface ${ifs.wan.name}
       ipv6rs
       dhcp6
 
       # this doesn't play well with networkd
       # ia_na
-      # ia_pd 1 ${if_lan}/0
-      # ia_pd 2 ${if_lan10}/0
-      # ia_pd 3 ${if_lan20}/0
+      # ia_pd 1 ${ifs.lan.name}/0
+      # ia_pd 2 ${ifs.lan10.name}/0
+      # ia_pd 3 ${ifs.lan20.name}/0
 
       # request the leases just for routing (so that the att box knows we're here)
-      # actual ip assignments are static, based on $pd_from_wan
+      # actual ip assignments are static, based on $pdFromWan
       ia_pd 1 -
       ia_pd 2 -
       # ia_pd 3 -
@@ -99,116 +173,45 @@ in
     links = {
       "10-wan" = {
         matchConfig.PermanentMACAddress = "bc:24:11:4f:c9:c4";
-        linkConfig.Name = if_wan;
+        linkConfig.Name = ifs.wan.name;
       };
       "10-lan" = {
         matchConfig.PermanentMACAddress = "bc:24:11:83:d8:de";
-        linkConfig.Name = if_lan;
+        linkConfig.Name = ifs.lan.name;
       };
     };
 
     netdevs = {
-      "10-vlan10" = {
-        netdevConfig = {
-          Kind = "vlan";
-          Name = if_lan10;
-        };
-        vlanConfig.Id = 10;
-      };
-      "10-vlan20" = {
-        netdevConfig = {
-          Kind = "vlan";
-          Name = if_lan20;
-        };
-        vlanConfig.Id = 20;
-      };
+      # "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
+      # "10-vlan20" = mkVlanDev { id = 20; name = ifs.lan20.name; };
+      "10-vlan50" = mkVlanDev { id = 50; name = ifs.lan50.name; };
     };
 
     networks = {
       "10-wan" = {
-        matchConfig.Name = if_wan;
+        matchConfig.Name = ifs.wan.name;
         networkConfig = {
           # start a DHCP Client for IPv4 Addressing/Routing
           # DHCP = "ipv4";
           # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
           # let dhcpcd handle this
-          Address = [ wan_ip4 ];
+          Address = [ ifs.wan.addr4Sized ];
           IPv6AcceptRA = false;
         };
-        routes = [ { Gateway = wan_gw4; } ];
+        routes = [ { Gateway = ifs.wan.gw4; } ];
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
       };
-      "20-lan" = {
-        matchConfig.Name = "lan";
+      "20-lan" = (mkLanConfig ifs.lan) // {
         vlan = [
-          if_lan10
-          if_lan20
-        ];
-        networkConfig = {
-          IPv4Forwarding = true;
-          IPv6SendRA = true;
-          Address = [ "${lan_p4}.1/24" ];
-        };
-        ipv6Prefixes = [
-          {
-            # AddressAutoconfiguration = false;
-            Prefix = "${lan_p6}::/64";
-            Assign = true;
-            # Token = [ "static:::1" "eui64" ];
-            Token = [ "static:::1" ];
-          }
-          {
-            Prefix = "${lan_ula_p}::/64";
-            Assign = true;
-            Token = [ "static:::1" ];
-          }
-        ];
-        ipv6SendRAConfig = {
-          Managed = true;
-          OtherInformation = true;
-          EmitDNS = true;
-          DNS = [ lan_ula_addr ];
-        };
-      };
-      "30-vlan10"  = {
-        matchConfig.Name = if_lan10;
-        networkConfig = {
-          IPv6SendRA = true;
-          Address = [ "${lan10_p4}.1/24" ];
-        };
-        ipv6Prefixes = [
-          {
-            Prefix = "${lan10_p6}::/64";
-            Assign = true;
-            Token = [ "static:::1" ];
-          }
-          {
-            Prefix = "${lan10_ula_p}::/64";
-            Assign = true;
-            Token = [ "static:::1" ];
-          }
+          ifs.lan10.name
+          ifs.lan20.name
+          ifs.lan50.name
         ];
       };
-      "30-vlan20"  = {
-        matchConfig.Name = if_lan20;
-        networkConfig = {
-          IPv6SendRA = true;
-          Address = [ "${lan20_p4}.1/24" ];
-        };
-        ipv6Prefixes = [
-          {
-            Prefix = "${lan20_p6}::/64";
-            Assign = true;
-            Token = [ "static:::1" ];
-          }
-          {
-            Prefix = "${lan20_ula_p}::/64";
-            Assign = true;
-            Token = [ "static:::1" ];
-          }
-        ];
-      };
+      "30-vlan10" = mkLanConfig ifs.lan10;
+      "30-vlan20" = mkLanConfig ifs.lan20;
+      "30-vlan50" = mkLanConfig ifs.lan50;
     };
   };
 
@@ -217,15 +220,10 @@ in
   networking.nftables.tables.firewall = {
     family = "inet";
     content = ''
-      define WAN_IF = "${if_wan}"
-      define LAN_IF = "${if_lan}"
-      define LAN_IPV4_SUBNET = ${lan_p4}.0/24
-      define LAN_IPV6_SUBNET = ${lan_p6}::/64
-      define LAN_IPV6_ULA = ${lan_ula_p}::/64
-      define LAN_IPV4_HOST = ${lan_p4}.100
-      define LAN_IPV6_HOST = ${lan_p6}::1:1000
+      define LAN_IPV4_HOST = ${ifs.lan.p4}.100
+      define LAN_IPV6_HOST = ${ifs.lan.p6}::1:1000
 
-      define ALLOWED_TCP_PORTS = { ssh, https, 19999 }
+      define ALLOWED_TCP_PORTS = { ssh, https }
       define ALLOWED_UDP_PORTS = { domain }
 
       chain input {
@@ -241,22 +239,32 @@ in
           ip6 nexthdr icmpv6 ip6 saddr fe80::/10 accept
           ip6 nexthdr icmpv6 ip6 daddr fe80::/10 accept # TODO: not sure if necessary
 
-          # Allow all ICMPv6 from LAN
-          iifname $LAN_IF ip6 saddr { $LAN_IPV6_SUBNET, $LAN_IPV6_ULA } ip6 nexthdr icmpv6 accept
           # Allow DHCPv6 client traffic
           ip6 daddr { fe80::/10, ff02::/16 } udp dport dhcpv6-server accept
 
-          # Allow all ICMP from LAN
-          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET ip protocol icmp accept
+          # LAN input rules (TODO: work in progress)
+          iifname ${ifs.lan.name} ip saddr ${ifs.lan.net4} jump default_lan_input
+          iifname ${ifs.lan10.name} ip saddr ${ifs.lan10.net4} jump default_lan_input
+          iifname ${ifs.lan20.name} ip saddr ${ifs.lan20.net4} jump default_lan_input
+          iifname ${ifs.lan50.name} ip saddr ${ifs.lan50.net4} jump default_lan_input
 
-          # Allow specific services from LAN
-          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET tcp dport $ALLOWED_TCP_PORTS accept
-          iifname $LAN_IF ip6 saddr { $LAN_IPV6_SUBNET, $LAN_IPV6_ULA } tcp dport $ALLOWED_TCP_PORTS accept
-          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET udp dport $ALLOWED_UDP_PORTS accept
-          iifname $LAN_IF ip6 saddr { $LAN_IPV6_SUBNET, $LAN_IPV6_ULA } udp dport $ALLOWED_UDP_PORTS accept
+          iifname ${ifs.lan.name} ip6 saddr { ${ifs.lan.net6}, ${ifs.lan.ulaNet} } jump default_lan_input
+          iifname ${ifs.lan10.name} ip6 saddr { ${ifs.lan10.net6}, ${ifs.lan10.ulaNet} } jump default_lan_input
+          iifname ${ifs.lan20.name} ip6 saddr { ${ifs.lan20.net6}, ${ifs.lan20.ulaNet} } jump default_lan_input
+          iifname ${ifs.lan50.name} ip6 saddr { ${ifs.lan50.net6}, ${ifs.lan50.ulaNet} } jump default_lan_input
 
           # Allow SSH from WAN (if needed)
-          iifname $WAN_IF tcp dport ssh accept
+          iifname ${ifs.wan.name} tcp dport ssh accept
+      }
+      chain default_lan_input {
+          # Allow all ICMPv6 from LAN
+          ip6 nexthdr icmpv6 accept
+          # Allow all ICMP from LAN
+          ip protocol icmp accept
+
+          # Allow specific services from LAN
+          tcp dport $ALLOWED_TCP_PORTS accept
+          udp dport $ALLOWED_UDP_PORTS accept
       }
 
       chain forward {
@@ -266,14 +274,21 @@ in
           ct state established,related accept
 
           # Port forwarding
-          iifname $WAN_IF tcp dport https ip daddr $LAN_IPV4_HOST accept
+          iifname ${ifs.wan.name} tcp dport https ip daddr $LAN_IPV4_HOST accept
 
           # Allowed IPv6 ports
-          iifname $WAN_IF tcp dport https ip6 daddr $LAN_IPV6_HOST accept
+          iifname ${ifs.wan.name} tcp dport https ip6 daddr $LAN_IPV6_HOST accept
 
           # Allow traffic from LAN to WAN
-          iifname $LAN_IF ip saddr $LAN_IPV4_SUBNET oifname $WAN_IF accept
-          iifname $LAN_IF ip6 saddr $LAN_IPV6_SUBNET oifname $WAN_IF accept
+          iifname ${ifs.lan.name} ip saddr ${ifs.lan.net4} oifname ${ifs.wan.name} accept
+          iifname ${ifs.lan10.name} ip saddr ${ifs.lan10.net4} oifname ${ifs.wan.name} accept
+          iifname ${ifs.lan20.name} ip saddr ${ifs.lan20.net4} oifname ${ifs.wan.name} accept
+          iifname ${ifs.lan50.name} ip saddr ${ifs.lan50.net4} oifname ${ifs.wan.name} accept
+
+          iifname ${ifs.lan.name} ip6 saddr ${ifs.lan.net6} oifname ${ifs.wan.name} accept
+          iifname ${ifs.lan10.name} ip6 saddr ${ifs.lan10.net6} oifname ${ifs.wan.name} accept
+          iifname ${ifs.lan20.name} ip6 saddr ${ifs.lan20.net6} oifname ${ifs.wan.name} accept
+          iifname ${ifs.lan50.name} ip6 saddr ${ifs.lan50.net6} oifname ${ifs.wan.name} accept
       }
 
       chain output {
@@ -286,7 +301,7 @@ in
           type nat hook prerouting priority dstnat; policy accept;
 
           # Port forwarding
-          iifname $WAN_IF tcp dport https dnat ip to $LAN_IPV4_HOST
+          iifname ${ifs.wan.name} tcp dport https dnat ip to $LAN_IPV4_HOST
       }
 
       chain postrouting {
@@ -296,10 +311,13 @@ in
           # Masquerade LAN addrs
           # theoretically shouldn't need to check the input interface here,
           # as it would be filtered by the forwarding rules
-          oifname $WAN_IF ip saddr $LAN_IPV4_SUBNET masquerade
+          oifname ${ifs.wan.name} ip saddr ${ifs.lan.net4} masquerade
+          oifname ${ifs.wan.name} ip saddr ${ifs.lan10.net4} masquerade
+          oifname ${ifs.wan.name} ip saddr ${ifs.lan20.net4} masquerade
+          oifname ${ifs.wan.name} ip saddr ${ifs.lan50.net4} masquerade
 
           # Optional IPv6 masquerading (big L if enabled)
-          # oifname $WAN_IF ip6 saddr $LAN_IPV6_ULA masquerade
+          # oifname ${ifs.wan.name} ip6 saddr ${ifs.lan.ulaNet} masquerade
       }
     '';
   };
@@ -307,31 +325,50 @@ in
   services.kea.dhcp4.enable = true;
   services.kea.dhcp4.settings = {
     interfaces-config.interfaces = [
-      if_lan
+      ifs.lan.name
+      # ifs.lan10.name
+      # ifs.lan20.name
+      ifs.lan50.name
     ];
     dhcp-ddns.enable-updates = true;
     ddns-qualifying-suffix = "default.${ldomain}";
     subnet4 = [
       {
         id = 1;
-        subnet = "${lan_p4}.0/24";
+        subnet = ifs.lan.net4;
         ddns-qualifying-suffix = "lan.${ldomain}";
-        pools = [ { pool = "${lan_p4}.100 - ${lan_p4}.199"; } ];
+        pools = [ { pool = "${ifs.lan.p4}.100 - ${ifs.lan.p4}.199"; } ];
         option-data = [
           {
             name = "routers";
-            data = "${lan_p4}.1";
+            data = ifs.lan.addr4;
           }
           {
             name = "domain-name-servers";
-            data = "${lan_p4}.1";
+            data = ifs.lan.addr4;
           }
         ];
         reservations = [
           {
             hw-address = "bc:24:11:b7:27:4d";
             hostname = "archy";
-            ip-address = "${lan_p4}.69";
+            ip-address = "${ifs.lan.p4}.69";
+          }
+        ];
+      }
+      {
+        id = 50;
+        subnet = ifs.lan50.net4;
+        ddns-qualifying-suffix = "prox.${ldomain}";
+        pools = [ { pool = "${ifs.lan50.p4}.100 - ${ifs.lan50.p4}.199"; } ];
+        option-data = [
+          {
+            name = "routers";
+            data = ifs.lan50.addr4;
+          }
+          {
+            name = "domain-name-servers";
+            data = ifs.lan50.addr4;
           }
         ];
       }
@@ -341,7 +378,10 @@ in
   services.kea.dhcp6.enable = true;
   services.kea.dhcp6.settings = {
     interfaces-config.interfaces = [
-      if_lan
+      ifs.lan.name
+      # ifs.lan10.name
+      # ifs.lan20.name
+      ifs.lan50.name
     ];
     # TODO: https://kea.readthedocs.io/en/latest/arm/ddns.html#dual-stack-environments
     dhcp-ddns.enable-updates = true;
@@ -349,18 +389,26 @@ in
     subnet6 = [
       {
         id = 1;
-        interface = if_lan;
-        subnet = "${lan_p6}::/64";
+        interface = ifs.lan.name;
+        subnet = ifs.lan.net6;
         ddns-qualifying-suffix = "lan6.${ldomain}";
         rapid-commit = true;
-        pools = [ { pool = "${lan_p6}::1:1000/116"; } ];
+        pools = [ { pool = "${ifs.lan.p6}::1:1000/116"; } ];
         reservations = [
           {
             duid = "00:04:59:c3:ce:9a:08:cf:fb:b7:fe:74:9c:e3:b7:44:bf:01";
             hostname = "archy";
-            ip-addresses = [ "${lan_p6}::69" ];
+            ip-addresses = [ "${ifs.lan.p6}::69" ];
           }
         ];
+      }
+      {
+        id = 50;
+        interface = ifs.lan50.name;
+        subnet = ifs.lan50.net6;
+        ddns-qualifying-suffix = "prox6.${ldomain}";
+        rapid-commit = true;
+        pools = [ { pool = "${ifs.lan50.p6}::1:1000/116"; } ];
       }
     ];
   };
@@ -399,7 +447,7 @@ in
     # https://adguard-dns.io/kb/general/dns-filtering-syntax/
     user_rules = [
       # DNS rewrites
-      "|grouter.${domain}^$dnsrewrite=${lan_ula_addr}"
+      "|grouter.${domain}^$dnsrewrite=${ifs.lan.ulaAddr}"
 
       # Allowed exceptions
       "@@||googleads.g.doubleclick.net"
