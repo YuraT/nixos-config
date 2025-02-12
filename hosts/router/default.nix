@@ -222,9 +222,25 @@ in
     content = ''
       define LAN_IPV4_HOST = ${ifs.lan.p4}.100
       define LAN_IPV6_HOST = ${ifs.lan.p6}::1:1000
+      define ZONE_WAN_IFS = { ${ifs.wan.name} }
+      define ZONE_LAN_IFS = { ${ifs.lan.name}, ${ifs.lan10.name}, ${ifs.lan20.name}, ${ifs.lan50.name} }
+      define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
 
       define ALLOWED_TCP_PORTS = { ssh, https }
       define ALLOWED_UDP_PORTS = { domain }
+
+      map port_forward_v4 {
+          type inet_proto . inet_service : ipv4_addr . inet_service
+          elements = {
+              tcp . 8006 : 10.17.50.10 . 8006
+          }
+      }
+      set port_forward_v6 {
+          type inet_proto . ipv6_addr . inet_service
+          elements = {
+              tcp . $LAN_IPV6_HOST . https
+          }
+      }
 
       chain input {
           type filter hook input priority filter; policy drop;
@@ -233,7 +249,7 @@ in
           ct state established,related accept
 
           # Allow all traffic from loopback interface
-          iifname lo accept
+          iif lo accept
 
           # Allow ICMPv6 on link local addrs
           ip6 nexthdr icmpv6 ip6 saddr fe80::/10 accept
@@ -242,21 +258,38 @@ in
           # Allow DHCPv6 client traffic
           ip6 daddr { fe80::/10, ff02::/16 } udp dport dhcpv6-server accept
 
-          # LAN input rules (TODO: work in progress)
-          iifname ${ifs.lan.name} ip saddr ${ifs.lan.net4} jump default_lan_input
-          iifname ${ifs.lan10.name} ip saddr ${ifs.lan10.net4} jump default_lan_input
-          iifname ${ifs.lan20.name} ip saddr ${ifs.lan20.net4} jump default_lan_input
-          iifname ${ifs.lan50.name} ip saddr ${ifs.lan50.net4} jump default_lan_input
-
-          iifname ${ifs.lan.name} ip6 saddr { ${ifs.lan.net6}, ${ifs.lan.ulaNet} } jump default_lan_input
-          iifname ${ifs.lan10.name} ip6 saddr { ${ifs.lan10.net6}, ${ifs.lan10.ulaNet} } jump default_lan_input
-          iifname ${ifs.lan20.name} ip6 saddr { ${ifs.lan20.net6}, ${ifs.lan20.ulaNet} } jump default_lan_input
-          iifname ${ifs.lan50.name} ip6 saddr { ${ifs.lan50.net6}, ${ifs.lan50.ulaNet} } jump default_lan_input
-
-          # Allow SSH from WAN (if needed)
-          iifname ${ifs.wan.name} tcp dport ssh accept
+          # WAN zone input rules
+          iifname $ZONE_WAN_IFS jump zone_wan_input
+          # LAN zone input rules
+          iifname $ZONE_LAN_IFS jump zone_lan_input
       }
-      chain default_lan_input {
+
+      chain forward {
+          type filter hook forward priority filter; policy drop;
+
+          # Allow established and related connections
+          ct state established,related accept
+
+          # WAN zone forward rules
+          iifname $ZONE_WAN_IFS jump zone_wan_forward
+          # LAN zone forward rules
+          iifname $ZONE_LAN_IFS jump zone_lan_forward
+      }
+
+      chain zone_wan_input {
+          # Allow SSH from WAN (if needed)
+          tcp dport ssh accept
+      }
+
+      chain zone_wan_forward {
+          # Port forwarding
+          ct status dnat accept
+
+          # Allowed IPv6 ports
+          meta l4proto . ip6 daddr . th dport @port_forward_v6 accept
+      }
+
+      chain zone_lan_input {
           # Allow all ICMPv6 from LAN
           ip6 nexthdr icmpv6 accept
           # Allow all ICMP from LAN
@@ -267,33 +300,23 @@ in
           udp dport $ALLOWED_UDP_PORTS accept
       }
 
-      chain forward {
-          type filter hook forward priority filter; policy drop;
+      chain zone_lan_forward {
+          # Allow port forwarded targets
+          # ct status dnat accept
 
-          # Allow established and related connections
-          ct state established,related accept
+          # Allow all traffic from LAN to WAN, except ULAs
+          oifname ${ifs.wan.name} ip6 saddr fd00::/8 drop
+          oifname ${ifs.wan.name} accept;
 
-          # Port forwarding
-          iifname ${ifs.wan.name} tcp dport https ip daddr $LAN_IPV4_HOST accept
-
-          # Allowed IPv6 ports
-          iifname ${ifs.wan.name} tcp dport https ip6 daddr $LAN_IPV6_HOST accept
-
-          # Allow traffic from LAN to WAN
-          iifname ${ifs.lan.name} ip saddr ${ifs.lan.net4} oifname ${ifs.wan.name} accept
-          iifname ${ifs.lan10.name} ip saddr ${ifs.lan10.net4} oifname ${ifs.wan.name} accept
-          iifname ${ifs.lan20.name} ip saddr ${ifs.lan20.net4} oifname ${ifs.wan.name} accept
-          iifname ${ifs.lan50.name} ip saddr ${ifs.lan50.net4} oifname ${ifs.wan.name} accept
-
-          iifname ${ifs.lan.name} ip6 saddr ${ifs.lan.net6} oifname ${ifs.wan.name} accept
-          iifname ${ifs.lan10.name} ip6 saddr ${ifs.lan10.net6} oifname ${ifs.wan.name} accept
-          iifname ${ifs.lan20.name} ip6 saddr ${ifs.lan20.net6} oifname ${ifs.wan.name} accept
-          iifname ${ifs.lan50.name} ip6 saddr ${ifs.lan50.net6} oifname ${ifs.wan.name} accept
+          # Allow traffic between LANs
+          oifname $ZONE_LAN_IFS accept
       }
 
       chain output {
           # Accept anything out of self by default
           type filter hook output priority filter; policy accept;
+          # NAT reflection
+          # oif lo ip daddr != 127.0.0.0/8 dnat ip to meta l4proto . th dport map @port_forward_v4
       }
 
       chain prerouting {
@@ -301,7 +324,9 @@ in
           type nat hook prerouting priority dstnat; policy accept;
 
           # Port forwarding
-          iifname ${ifs.wan.name} tcp dport https dnat ip to $LAN_IPV4_HOST
+          # iifname ${ifs.wan.name} tcp dport https dnat ip to $LAN_IPV4_HOST
+          # tcp dport $PROX_PORT fib daddr type local dnat ip to $PROX_HOST
+          fib daddr type local dnat ip to meta l4proto . th dport map @port_forward_v4
       }
 
       chain postrouting {
@@ -309,15 +334,10 @@ in
           type nat hook postrouting priority srcnat; policy accept;
 
           # Masquerade LAN addrs
-          # theoretically shouldn't need to check the input interface here,
-          # as it would be filtered by the forwarding rules
-          oifname ${ifs.wan.name} ip saddr ${ifs.lan.net4} masquerade
-          oifname ${ifs.wan.name} ip saddr ${ifs.lan10.net4} masquerade
-          oifname ${ifs.wan.name} ip saddr ${ifs.lan20.net4} masquerade
-          oifname ${ifs.wan.name} ip saddr ${ifs.lan50.net4} masquerade
+          oifname ${ifs.wan.name} ip saddr $RFC1918 masquerade
 
-          # Optional IPv6 masquerading (big L if enabled)
-          # oifname ${ifs.wan.name} ip6 saddr ${ifs.lan.ulaNet} masquerade
+          # Optional IPv6 masquerading (big L if enabled, don't forget to allow forwarding)
+          # oifname ${ifs.wan.name} ip6 saddr fd00::/8 masquerade
       }
     '';
   };
