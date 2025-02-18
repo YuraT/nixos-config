@@ -222,9 +222,10 @@
     gnome-keyring # config for this and some others
     gnumake
     helix
-    jetbrains-toolbox # or maybe do invidual ones?
     # jetbrains.rust-rover
+    # jetbrains.goland
     jetbrains.clion
+    jetbrains.idea-ultimate
     jetbrains.pycharm-professional
     jetbrains.webstorm
     android-studio
