@@ -5,12 +5,14 @@ let
 
   mkIfConfig = {
     name_,
+    domain_,
     p4_,  # /24
     p6_,  # /64
     ulaPrefix_,  # /64
     token? 1,
     }: rec {
       name = name_;
+      domain = domain_;
       p4 = p4_;
       p4Size = 24;
       net4 = "${p4}.0/${toString p4Size}";
@@ -41,66 +43,93 @@ let
     };
     lan = mkIfConfig {
       name_ = "lan";
+      domain_ = "lan.${ldomain}";
       p4_ = "${p4}.1";                   # .0/24
       p6_ = "${pdFromWan}9";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0001";  # ::/64
     };
     lan10 = mkIfConfig {
       name_ = "${lan.name}.10";
+      domain_ = "lab.${ldomain}";
       p4_ = "${p4}.10";                  # .0/24
       p6_ = "${pdFromWan}a";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0010";  # ::/64
     };
     lan20 = mkIfConfig {
       name_ = "${lan.name}.20";
+      domain_ = "life.${ldomain}";
       p4_ = "${p4}.20";                  # .0/24
       p6_ = "${pdFromWan}2";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0020";  # ::/64
     };
     lan50 = mkIfConfig {
       name_ = "${lan.name}.50";
+      domain_ = "prox.${ldomain}";
       p4_ = "10.17.50";                  # .0/24 TODO: change to p4 later
       p6_ = "${pdFromWan}a";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
     };
   };
 
-  mkVlanDev = { id, name }:
-    {
-      netdevConfig = {
-        Kind = "vlan";
-        Name = name;
-      };
-      vlanConfig.Id = id;
+  mkVlanDev = { id, name }: {
+    netdevConfig = {
+      Kind = "vlan";
+      Name = name;
     };
-  mkLanConfig = ifObj:
-    {
-      matchConfig.Name = ifObj.name;
-      networkConfig = {
-        IPv4Forwarding = true;
-        IPv6SendRA = true;
-        Address = [ ifObj.addr4Sized ];
-      };
-      ipv6Prefixes = [
-        {
-          Prefix = ifObj.net6;
-          Assign = true;
-          # Token = [ "static::1" "eui64" ];
-          Token = [ "static:${ifObj.ip6Token}" ];
-        }
-        {
-          Prefix = ifObj.ulaNet;
-          Assign = true;
-          Token = [ "static:${ifObj.ip6Token}" ];
-        }
-      ];
-      ipv6SendRAConfig = {
-        Managed = true;
-        OtherInformation = true;
-        EmitDNS = true;
-        DNS = [ ifObj.ulaAddr ];
-      };
+    vlanConfig.Id = id;
+  };
+
+  mkLanConfig = ifObj: {
+    matchConfig.Name = ifObj.name;
+    networkConfig = {
+      IPv4Forwarding = true;
+      IPv6SendRA = true;
+      Address = [ ifObj.addr4Sized ];
     };
+    ipv6Prefixes = [
+      {
+        Prefix = ifObj.net6;
+        Assign = true;
+        # Token = [ "static::1" "eui64" ];
+        Token = [ "static:${ifObj.ip6Token}" ];
+      }
+      {
+        Prefix = ifObj.ulaNet;
+        Assign = true;
+        Token = [ "static:${ifObj.ip6Token}" ];
+      }
+    ];
+    ipv6SendRAConfig = {
+      Managed = true;
+      OtherInformation = true;
+      EmitDNS = true;
+      DNS = [ ifObj.ulaAddr ];
+    };
+  };
+
+  mkDhcp4Subnet = id: ifObj: {
+    id = id;
+    subnet = ifObj.net4;
+    pools = [ { pool = "${ifObj.p4}.100 - ${ifObj.p4}.199"; } ];
+    ddns-qualifying-suffix = "4.${ifObj.domain}";
+    option-data = [
+      { name = "routers"; data = ifObj.addr4; }
+      { name = "domain-name-servers"; data = ifObj.addr4; }
+      { name = "domain-name"; data = "4.${ifObj.domain}"; }
+    ];
+  };
+
+  mkDhcp6Subnet = id: ifObj: {
+    id = id;
+    interface = ifObj.name;
+    subnet = ifObj.net6;
+    rapid-commit = true;
+    pools = [ { pool = "${ifObj.p6}::1:1000/116"; } ];
+    ddns-qualifying-suffix = "6.${ifObj.domain}";
+    option-data = [
+      { name = "domain-search"; data = "6.${ifObj.domain}"; }
+    ];
+  };
 in
 {
   imports =
@@ -202,7 +231,9 @@ in
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
       };
-      "20-lan" = (mkLanConfig ifs.lan) // {
+      # "20-lan" = (mkLanConfig ifs.lan) // {
+      "20-lan" = {
+        matchConfig.Name = ifs.lan.name;
         vlan = [
           ifs.lan10.name
           ifs.lan20.name
@@ -351,23 +382,9 @@ in
       ifs.lan50.name
     ];
     dhcp-ddns.enable-updates = true;
-    ddns-qualifying-suffix = "default.${ldomain}";
+    ddns-qualifying-suffix = "4.default.${ldomain}";
     subnet4 = [
-      {
-        id = 1;
-        subnet = ifs.lan.net4;
-        ddns-qualifying-suffix = "lan.${ldomain}";
-        pools = [ { pool = "${ifs.lan.p4}.100 - ${ifs.lan.p4}.199"; } ];
-        option-data = [
-          {
-            name = "routers";
-            data = ifs.lan.addr4;
-          }
-          {
-            name = "domain-name-servers";
-            data = ifs.lan.addr4;
-          }
-        ];
+      ((mkDhcp4Subnet 1 ifs.lan) // {
         reservations = [
           {
             hw-address = "bc:24:11:b7:27:4d";
@@ -375,23 +392,8 @@ in
             ip-address = "${ifs.lan.p4}.69";
           }
         ];
-      }
-      {
-        id = 50;
-        subnet = ifs.lan50.net4;
-        ddns-qualifying-suffix = "prox.${ldomain}";
-        pools = [ { pool = "${ifs.lan50.p4}.100 - ${ifs.lan50.p4}.199"; } ];
-        option-data = [
-          {
-            name = "routers";
-            data = ifs.lan50.addr4;
-          }
-          {
-            name = "domain-name-servers";
-            data = ifs.lan50.addr4;
-          }
-        ];
-      }
+      })
+      (mkDhcp4Subnet 50 ifs.lan50)
     ];
   };
 
@@ -405,15 +407,9 @@ in
     ];
     # TODO: https://kea.readthedocs.io/en/latest/arm/ddns.html#dual-stack-environments
     dhcp-ddns.enable-updates = true;
-    ddns-qualifying-suffix = "default6.${ldomain}";
+    ddns-qualifying-suffix = "6.default.${ldomain}";
     subnet6 = [
-      {
-        id = 1;
-        interface = ifs.lan.name;
-        subnet = ifs.lan.net6;
-        ddns-qualifying-suffix = "lan6.${ldomain}";
-        rapid-commit = true;
-        pools = [ { pool = "${ifs.lan.p6}::1:1000/116"; } ];
+      ((mkDhcp6Subnet 1 ifs.lan) // {
         reservations = [
           {
             duid = "00:04:59:c3:ce:9a:08:cf:fb:b7:fe:74:9c:e3:b7:44:bf:01";
@@ -421,33 +417,19 @@ in
             ip-addresses = [ "${ifs.lan.p6}::69" ];
           }
         ];
-      }
-      {
-        id = 50;
-        interface = ifs.lan50.name;
-        subnet = ifs.lan50.net6;
-        ddns-qualifying-suffix = "prox6.${ldomain}";
-        rapid-commit = true;
-        pools = [ { pool = "${ifs.lan50.p6}::1:1000/116"; } ];
-      }
+      })
+      (mkDhcp6Subnet 50 ifs.lan50)
     ];
   };
 
   services.kea.dhcp-ddns.enable = true;
   services.kea.dhcp-ddns.settings = {
-    forward-ddns = {
-      ddns-domains = [
-        {
-          name = "${ldomain}.";
-          dns-servers = [
-            {
-              ip-address = "::1";
-              port = 1053;
-            }
-          ];
-        }
-      ];
-    };
+    forward-ddns.ddns-domains = [
+      {
+        name = "${ldomain}.";
+        dns-servers = [ { ip-address = "::1"; port = 1053; } ];
+      }
+    ];
   };
 
   services.resolved.enable = false;
@@ -476,10 +458,8 @@ in
 
   services.knot.enable = true;
   services.knot.settings = {
-    server = {
-      # listen = "0.0.0.0@1053";
-      listen = "::1@1053";
-    };
+    # server.listen = "0.0.0.0@1053";
+    server.listen = "::1@1053";
     # TODO: templates
     zone = [
       {
