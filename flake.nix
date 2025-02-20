@@ -5,13 +5,17 @@
     nixpkgs = {
       url = "github:NixOS/nixpkgs/nixos-unstable";
     };
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixos-generators = {
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nixos-generators }: {
+  outputs = { self, nixpkgs, home-manager, nixos-generators }: {
     nixosConfigurations = {
       Yura-PC = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -19,6 +23,16 @@
           ./modules
           ./hosts/common.nix
           ./hosts/Yura-PC
+          # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.cazzzer = import ./home;
+
+            # Optionally, use home-manager.extraSpecialArgs to pass
+            # arguments to home.nix
+          }
         ];
       };
       VM = nixpkgs.lib.nixosSystem {
