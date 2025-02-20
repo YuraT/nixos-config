@@ -1,10 +1,77 @@
 { config, pkgs, ... }:
-
+let
+  defaultFont = {
+    family = "Noto Sans";
+    pointSize = 13;
+  };
+in
 {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
   home.username = "cazzzer";
   home.homeDirectory = "/home/cazzzer";
+
+  # Let Home Manager install and manage itself.
+  programs.home-manager.enable = true;
+
+  home.sessionVariables = {
+    EDITOR = "micro";
+    SHELL = "fish";
+  };
+
+  services.darkman = {
+    enable = true;
+    settings = {
+      lat = 37.3387;
+      lng = -121.8853;
+    };
+    lightModeScripts = {
+      plasma-color = "plasma-apply-colorscheme BreezeLight";
+    };
+    darkModeScripts = {
+      plasma-color = "plasma-apply-colorscheme BreezeDark";
+    };
+  };
+
+  programs.plasma = {
+    enable = true;
+    overrideConfig = true;
+    workspace.iconTheme = "Tela-circle";
+    fonts = {
+      general = defaultFont;
+      fixedWidth = defaultFont // { family = "Hack"; };
+      small = defaultFont // { pointSize = defaultFont.pointSize - 2; };
+      toolbar = defaultFont;
+      menu = defaultFont;
+      windowTitle = defaultFont;
+    };
+    input.keyboard.layouts = [ { layout = "minimak-4"; displayName = "us4"; } ];
+    kwin.virtualDesktops.number = 2;
+    shortcuts = {
+      # kmix.mic_mute = "ScrollLock";
+      kmix.mic_mute = ["Microphone Mute" "ScrollLock" "Meta+Volume Mute,Microphone Mute" "Meta+Volume Mute,Mute Microphone"];
+      plasmashell.show-barcode = "Meta+M";
+    };
+    hotkeys.commands."launch-konsole" = {
+      name = "Launch Konsole";
+      key = "Meta+Alt+C";
+      command = "konsole";
+    };
+    configFile = {
+      kdeglobals.KDE.AnimationDurationFactor = 0.5;
+      kdeglobals.General.accentColorFromWallpaper = true;
+      kwinrc.Wayland.InputMethod = {
+        value = "org.fcitx.Fcitx5.desktop";
+        shellExpand = true;
+      };
+      kactivitymanagerdrc = {
+        activities."809dc779-bf5b-49e6-8e3f-cbe283cb05b6" = "Default";
+        activities."b34a506d-ac4f-4797-8c08-6ef45bc49341" = "Fun";
+        activities-icons."809dc779-bf5b-49e6-8e3f-cbe283cb05b6" = "keyboard";
+        activities-icons."b34a506d-ac4f-4797-8c08-6ef45bc49341" = "preferences-desktop-gaming";
+      };
+    };
+  };
 
   # This value determines the Home Manager release that your configuration is
   # compatible with. This helps avoid breakage when a new Home Manager release
@@ -17,7 +84,7 @@
 
   # The home.packages option allows you to install Nix packages into your
   # environment.
-  home.packages = [
+  # home.packages = [
     # # Adds the 'hello' command to your environment. It prints a friendly
     # # "Hello, world!" when run.
     # pkgs.hello
@@ -34,11 +101,11 @@
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
-  ];
+  # ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
   # plain files is through 'home.file'.
-  home.file = {
+  # home.file = {
     # # Building this configuration will create a copy of 'dotfiles/screenrc' in
     # # the Nix store. Activating the configuration will then make '~/.screenrc' a
     # # symlink to the Nix store copy.
@@ -49,9 +116,7 @@
     #   org.gradle.console=verbose
     #   org.gradle.daemon.idletimeout=3600000
     # '';
-
-    ".config/hi".text = "hello";
-  };
+  # };
 
   # Home Manager can also manage your environment variables through
   # 'home.sessionVariables'. These will be explicitly sourced when using a
@@ -69,10 +134,7 @@
   #
   #  /etc/profiles/per-user/cazzzer/etc/profile.d/hm-session-vars.sh
   #
-  home.sessionVariables = {
+  # home.sessionVariables = {
     # EDITOR = "emacs";
-  };
-
-  # Let Home Manager install and manage itself.
-  programs.home-manager.enable = true;
+  # };
 }

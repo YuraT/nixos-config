@@ -9,13 +9,18 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    plasma-manager = {
+      url = "github:nix-community/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
     nixos-generators = {
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, nixos-generators }: {
+  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators }: {
     nixosConfigurations = {
       Yura-PC = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -28,8 +33,9 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.users.cazzzer = import ./home;
+            home-manager.sharedModules = [ plasma-manager.homeManagerModules.plasma-manager ];
 
+            home-manager.users.cazzzer = import ./home;
             # Optionally, use home-manager.extraSpecialArgs to pass
             # arguments to home.nix
           }
