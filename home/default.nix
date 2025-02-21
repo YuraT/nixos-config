@@ -2,7 +2,7 @@
 let
   defaultFont = {
     family = "Noto Sans";
-    pointSize = 13;
+    pointSize = 14;
   };
 in
 {
@@ -17,6 +17,11 @@ in
   home.sessionVariables = {
     EDITOR = "micro";
     SHELL = "fish";
+  };
+
+  services.gnome-keyring = {
+    enable = true;
+    components = [ "pkcs11" "ssh" ];
   };
 
   services.darkman = {
@@ -51,6 +56,7 @@ in
       # kmix.mic_mute = "ScrollLock";
       kmix.mic_mute = ["Microphone Mute" "ScrollLock" "Meta+Volume Mute,Microphone Mute" "Meta+Volume Mute,Mute Microphone"];
       plasmashell.show-barcode = "Meta+M";
+      kwin."Window Maximize" = [ "Meta+F" "Meta+PgUp,Maximize Window" ];
     };
     hotkeys.commands."launch-konsole" = {
       name = "Launch Konsole";
@@ -64,6 +70,7 @@ in
         value = "org.fcitx.Fcitx5.desktop";
         shellExpand = true;
       };
+      dolphinrc.General.ShowFullPath = true;
       kactivitymanagerdrc = {
         activities."809dc779-bf5b-49e6-8e3f-cbe283cb05b6" = "Default";
         activities."b34a506d-ac4f-4797-8c08-6ef45bc49341" = "Fun";
