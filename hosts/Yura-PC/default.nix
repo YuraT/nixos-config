@@ -152,7 +152,6 @@
   virtualisation.docker.enable = true;
   virtualisation.docker.enableOnBoot = false;
   virtualisation.docker.package = pkgs.docker_27;
-  virtualisation.docker.storageDriver = "zfs";
 
   # https://discourse.nixos.org/t/firefox-does-not-use-kde-window-decorations-and-cursor/32132/3
   # programs.dconf.enable = true;
@@ -262,8 +261,8 @@
 
   # Open ports in the firewall.
   # networking.nftables.enable = true;
-  networking.firewall.allowedTCPPorts = [ 8080 ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
+  networking.firewall.allowedTCPPorts = [ 8080 22000 ];
+  networking.firewall.allowedUDPPorts = [ 22000 ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
 
