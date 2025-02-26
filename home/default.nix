@@ -52,6 +52,7 @@ in
     };
     input.keyboard.layouts = [ { layout = "minimak-4"; displayName = "us4"; } ];
     kwin.virtualDesktops.number = 2;
+    session.sessionRestore.restoreOpenApplicationsOnLogin = "startWithEmptySession";
     shortcuts = {
       # kmix.mic_mute = "ScrollLock";
       kmix.mic_mute = ["Microphone Mute" "ScrollLock" "Meta+Volume Mute,Microphone Mute" "Meta+Volume Mute,Mute Microphone"];
