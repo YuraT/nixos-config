@@ -31,7 +31,7 @@ let
       ulaAddrSized = "${ulaAddr}/${toString ulaSize}";
     };
 
-  p4 = "10.19";                      # .0.0/16
+  p4 = "10.17";                      # .0.0/16
   pdFromWan = "";  # ::/60
   ulaPrefix = "fdab:07d3:581d";      # ::/48
   ifs = rec {
@@ -62,10 +62,24 @@ let
       p6_ = "${pdFromWan}2";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0020";  # ::/64
     };
+    lan30 = mkIfConfig {
+      name_ = "${lan.name}.30";
+      domain_ = "iot.${ldomain}";
+      p4_ = "${p4}.30";                  # .0/24
+      p6_ = "${pdFromWan}3";             # ::/64
+      ulaPrefix_ = "${ulaPrefix}:0030";  # ::/64
+    };
+    lan40 = mkIfConfig {
+      name_ = "${lan.name}.40";
+      domain_ = "kube.${ldomain}";
+      p4_ = "${p4}.40";                  # .0/24
+      p6_ = "${pdFromWan}4";             # ::/64
+      ulaPrefix_ = "${ulaPrefix}:0040";  # ::/64
+    };
     lan50 = mkIfConfig {
       name_ = "${lan.name}.50";
       domain_ = "prox.${ldomain}";
-      p4_ = "10.17.50";                  # .0/24 TODO: change to p4 later
+      p4_ = "${p4}.50";                  # .0/24
       p6_ = "${pdFromWan}a";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
     };
@@ -104,6 +118,16 @@ let
       OtherInformation = true;
       EmitDNS = true;
       DNS = [ ifObj.ulaAddr ];
+    };
+  };
+
+  mkTempLanConfig = ifObj: {
+    matchConfig.Name = ifObj.name;
+    networkConfig = {
+      IPv4Forwarding = true;
+      # IPv6SendRA = true;
+      Address = [ "${ifObj.p4}.249/24" ];
+      # IPv6AcceptRA = true;
     };
   };
 
@@ -211,8 +235,10 @@ in
     };
 
     netdevs = {
-      # "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
-      # "10-vlan20" = mkVlanDev { id = 20; name = ifs.lan20.name; };
+      "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
+      "10-vlan20" = mkVlanDev { id = 20; name = ifs.lan20.name; };
+      "10-vlan30" = mkVlanDev { id = 30; name = ifs.lan30.name; };
+      "10-vlan40" = mkVlanDev { id = 40; name = ifs.lan40.name; };
       "10-vlan50" = mkVlanDev { id = 50; name = ifs.lan50.name; };
     };
 
@@ -237,11 +263,15 @@ in
         vlan = [
           ifs.lan10.name
           ifs.lan20.name
+          ifs.lan30.name
+          ifs.lan40.name
           ifs.lan50.name
         ];
       };
-      "30-vlan10" = mkLanConfig ifs.lan10;
-      "30-vlan20" = mkLanConfig ifs.lan20;
+      "30-vlan10" = mkTempLanConfig ifs.lan10;
+      "30-vlan20" = mkTempLanConfig ifs.lan20;
+      "30-vlan30" = mkTempLanConfig ifs.lan30;
+      "30-vlan40" = mkTempLanConfig ifs.lan40;
       "30-vlan50" = mkLanConfig ifs.lan50;
     };
   };
@@ -254,7 +284,14 @@ in
       define LAN_IPV4_HOST = ${ifs.lan.p4}.100
       define LAN_IPV6_HOST = ${ifs.lan.p6}::1:1000
       define ZONE_WAN_IFS = { ${ifs.wan.name} }
-      define ZONE_LAN_IFS = { ${ifs.lan.name}, ${ifs.lan10.name}, ${ifs.lan20.name}, ${ifs.lan50.name} }
+      define ZONE_LAN_IFS = {
+          ${ifs.lan.name},
+          ${ifs.lan10.name},
+          ${ifs.lan20.name},
+          ${ifs.lan30.name},
+          ${ifs.lan40.name},
+          ${ifs.lan50.name},
+      }
       define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
 
       define ALLOWED_TCP_PORTS = { ssh, https }
@@ -263,7 +300,7 @@ in
       map port_forward_v4 {
           type inet_proto . inet_service : ipv4_addr . inet_service
           elements = {
-              tcp . 8006 : 10.17.50.10 . 8006
+              tcp . 8006 : ${ifs.lan50.p4}.10 . 8006
           }
       }
       set port_forward_v6 {
@@ -336,8 +373,8 @@ in
           # ct status dnat accept
 
           # Allow all traffic from LAN to WAN, except ULAs
-          oifname ${ifs.wan.name} ip6 saddr fd00::/8 drop
-          oifname ${ifs.wan.name} accept;
+          oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 drop
+          oifname $ZONE_WAN_IFS accept;
 
           # Allow traffic between LANs
           oifname $ZONE_LAN_IFS accept
@@ -355,7 +392,7 @@ in
           type nat hook prerouting priority dstnat; policy accept;
 
           # Port forwarding
-          # iifname ${ifs.wan.name} tcp dport https dnat ip to $LAN_IPV4_HOST
+          # iifname $ZONE_WAN_IFS tcp dport https dnat ip to $LAN_IPV4_HOST
           # tcp dport $PROX_PORT fib daddr type local dnat ip to $PROX_HOST
           fib daddr type local dnat ip to meta l4proto . th dport map @port_forward_v4
       }
@@ -365,10 +402,10 @@ in
           type nat hook postrouting priority srcnat; policy accept;
 
           # Masquerade LAN addrs
-          oifname ${ifs.wan.name} ip saddr $RFC1918 masquerade
+          oifname $ZONE_WAN_IFS ip saddr $RFC1918 masquerade
 
           # Optional IPv6 masquerading (big L if enabled, don't forget to allow forwarding)
-          # oifname ${ifs.wan.name} ip6 saddr fd00::/8 masquerade
+          # oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 masquerade
       }
     '';
   };
@@ -552,7 +589,8 @@ in
 
   # Enable the KDE Plasma Desktop Environment.
   # Useful for debugging with wireshark.
-  services.displayManager.sddm.enable = false;
+  # services.displayManager.sddm.enable = true;
+  hardware.graphics.enable = true;
   services.displayManager.sddm.wayland.enable = true;
   services.desktopManager.plasma6.enable = true;
   # No need for audio in VM
