@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   defaultFont = {
     family = "Noto Sans";
@@ -38,6 +38,90 @@ in
     };
   };
 
+  programs.fish = {
+    enable = true;
+    shellInit = "set fish_greeting";
+    shellAliases = {
+      # Replace ls with exa
+      ls = "exa -al --color=always --group-directories-first --icons"; # preferred listing
+      la = "exa -a --color=always --group-directories-first --icons";  # all files and dirs
+      ll = "exa -l --color=always --group-directories-first --icons";  # long format
+      lt = "exa -aT --color=always --group-directories-first --icons"; # tree listing
+      "l." = "exa -a | rg '^\.'";                                      # show only dotfiles
+      
+      # Replace cat with bat
+      cat = "bat";
+    };
+    # alias for nix shell with flake packages
+    functions.add.body = ''
+      set -x packages 'nixpkgs#'(string join ' nixpkgs#' $argv)
+      nix shell $packages --command fish
+    '';
+    interactiveShellInit = ''
+      fastfetch
+    '';
+  };
+
+  programs.starship = {
+    enable = true;
+    enableFishIntegration = true;
+    settings = {
+      format = lib.concatStrings [
+        "$all"
+        "$time"
+        "$cmd_duration"
+        "$line_break"
+        "$jobs"
+        "$status"
+        "$character"
+      ];
+      username = {
+        format = " [╭─$user]($style)@";
+        style_user = "bold red";
+        style_root = "bold red";
+        show_always = true;
+      };
+      hostname = {
+        format = "[$hostname]($style) in ";
+        style = "bold dimmed red";
+        ssh_only = false;
+      };
+      directory = {
+        style = "purple";
+        truncation_length = 0;
+        truncate_to_repo = true;
+        truncation_symbol = "repo: ";
+      };
+      git_status = {
+        style = "white";
+        ahead = "⇡\${count}";
+        diverged = "⇕⇡\${ahead_count}⇣\${behind_count}";
+        behind = "⇣\${count}";
+        deleted = "x";
+      };
+      cmd_duration = {
+        min_time = 1000;
+        format = "took [$duration]($style) ";
+      };
+      time = {
+        format = " 🕙 $time($style) ";
+        time_format = "%T";
+        style = "bright-white";
+        disabled = false;
+      };
+      character = {
+        success_symbol = " [╰─λ](bold red)";
+        error_symbol = " [×](bold red)";
+      };
+      status = {
+        symbol = "🔴";
+        format = "[\\[$symbol$status_common_meaning$status_signal_name$status_maybe_int\\]]($style)";
+        map_symbol = true;
+        disabled = false;
+      };
+    };
+  };
+
   programs.plasma = {
     enable = true;
     overrideConfig = true;
@@ -50,7 +134,11 @@ in
       menu = defaultFont;
       windowTitle = defaultFont;
     };
-    input.keyboard.layouts = [ { layout = "minimak-4"; displayName = "us4"; } ];
+    input.keyboard.layouts = [
+      { layout = "us"; displayName = "us"; }
+      { layout = "minimak-4"; displayName = "us4"; }
+      { layout = "ru"; displayName = "ru"; }
+    ];
     kwin.virtualDesktops.number = 2;
     session.sessionRestore.restoreOpenApplicationsOnLogin = "startWithEmptySession";
     shortcuts = {
@@ -58,6 +146,7 @@ in
       kmix.mic_mute = ["Microphone Mute" "ScrollLock" "Meta+Volume Mute,Microphone Mute" "Meta+Volume Mute,Mute Microphone"];
       plasmashell.show-barcode = "Meta+M";
       kwin."Window Maximize" = [ "Meta+F" "Meta+PgUp,Maximize Window" ];
+      "KDE Keyboard Layout Switcher"."Switch to Next Keyboard Layout" = "Meta+Space";
     };
     hotkeys.commands."launch-konsole" = {
       name = "Launch Konsole";
@@ -79,6 +168,10 @@ in
         activities-icons."b34a506d-ac4f-4797-8c08-6ef45bc49341" = "preferences-desktop-gaming";
       };
     };
+  };
+
+  xdg.configFile = {
+    "fcitx5/conf/wayland.conf".text = "Allow Overriding System XKB Settings=False";
   };
 
   # This value determines the Home Manager release that your configuration is
