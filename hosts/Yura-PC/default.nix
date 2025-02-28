@@ -125,6 +125,10 @@
 
       # Nix
       nixd
+
+      # Gleam
+      gleam
+      beamMinimal26Packages.erlang
     ];
   };
 
