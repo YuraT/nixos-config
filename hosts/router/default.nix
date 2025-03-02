@@ -45,14 +45,14 @@ let
       name_ = "lan";
       domain_ = "lan.${ldomain}";
       p4_ = "${p4}.1";                   # .0/24
-      p6_ = "${pdFromWan}9";             # ::/64
+      p6_ = "${pdFromWan}8";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0001";  # ::/64
     };
     lan10 = mkIfConfig {
       name_ = "${lan.name}.10";
       domain_ = "lab.${ldomain}";
       p4_ = "${p4}.10";                  # .0/24
-      p6_ = "${pdFromWan}a";             # ::/64
+      p6_ = "${pdFromWan}1";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0010";  # ::/64
     };
     lan20 = mkIfConfig {
@@ -66,14 +66,14 @@ let
       name_ = "${lan.name}.30";
       domain_ = "iot.${ldomain}";
       p4_ = "${p4}.30";                  # .0/24
-      p6_ = "${pdFromWan}3";             # ::/64
+      p6_ = "${pdFromWan}9";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0030";  # ::/64
     };
     lan40 = mkIfConfig {
       name_ = "${lan.name}.40";
       domain_ = "kube.${ldomain}";
       p4_ = "${p4}.40";                  # .0/24
-      p6_ = "${pdFromWan}4";             # ::/64
+      p6_ = "${pdFromWan}f";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0040";  # ::/64
     };
     lan50 = mkIfConfig {
@@ -84,6 +84,72 @@ let
       ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
     };
   };
+
+  # Reservations added to Kea
+  reservations.lan.v4.reservations = [
+    {
+      hw-address = "64:66:b3:78:9c:09";
+      hostname = "openwrt";
+      ip-address = "${ifs.lan.p4}.2";
+    }
+    {
+      hw-address = "40:86:cb:19:9d:70";
+      hostname = "dlink-switchy";
+      ip-address = "${ifs.lan.p4}.3";
+    }
+    {
+      hw-address = "6c:cd:d6:af:4f:6f";
+      hostname = "netgear-switchy";
+      ip-address = "${ifs.lan.p4}.4";
+    }
+    {
+      hw-address = "74:d4:35:1d:0e:80";
+      hostname = "pve-1";
+      ip-address = "${ifs.lan.p4}.5";
+    }
+    {
+      hw-address = "00:25:90:f3:d0:e0";
+      hostname = "pve-2";
+      ip-address = "${ifs.lan.p4}.6";
+    }
+    {
+      hw-address = "a8:a1:59:d0:57:87";
+      hostname = "pve-3";
+      ip-address = "${ifs.lan.p4}.7";
+    }
+  ];
+
+  reservations.lan.v6.reservations = [
+    {
+      duid = "00:03:00:01:64:66:b3:78:9c:09";
+      hostname = "openwrt";
+      ip-addresses = [ "${ifs.lan.p6}::1:2" ];
+    }
+  ];
+
+  alpinaDomains = [
+    "|"
+    "|nc."
+    "|sonarr."
+    "|radarr."
+    "|prowlarr."
+    "|qbit."
+    "|gitea."
+    "|traefik."
+    "|auth."
+    "||s3."
+    "|minio."
+    "|jellyfin."
+    "|whoami."
+    "|grafana."
+    "|influxdb."
+    "|uptime."
+    "|opnsense."
+    "|vpgen."
+    "|woodpecker."
+    "||pgrok."
+    "|sync."
+  ];
 
   mkVlanDev = { id, name }: {
     netdevConfig = {
@@ -172,6 +238,10 @@ in
   boot.loader.systemd-boot.configurationLimit = 5;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
   boot.growPartition = true;
+  # https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+  # For upstream quic dns
+  boot.kernel.sysctl."net.core.wmem_max" = 7500000;
+  boot.kernel.sysctl."net.core.rmem_max" = 7500000;
 
   networking.hostName = "grouter";
 
@@ -203,9 +273,9 @@ in
       # actual ip assignments are static, based on $pdFromWan
       ia_pd 1 -
       ia_pd 2 -
-      # ia_pd 3 -
-      # ia_pd 4 -
-      # ia_pd 5 -
+      ia_pd 3 -
+      ia_pd 4 -
+      ia_pd 5 -
       # ia_pd 6 -
       # ia_pd 7 -
       # ia_pd 8 -
@@ -257,9 +327,7 @@ in
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
       };
-      # "20-lan" = (mkLanConfig ifs.lan) // {
-      "20-lan" = {
-        matchConfig.Name = ifs.lan.name;
+      "20-lan" = (mkLanConfig ifs.lan) // {
         vlan = [
           ifs.lan10.name
           ifs.lan20.name
@@ -270,8 +338,8 @@ in
       };
       "30-vlan10" = mkTempLanConfig ifs.lan10;
       "30-vlan20" = mkTempLanConfig ifs.lan20;
-      "30-vlan30" = mkTempLanConfig ifs.lan30;
-      "30-vlan40" = mkTempLanConfig ifs.lan40;
+      "30-vlan30" = mkLanConfig ifs.lan30;
+      "30-vlan40" = mkLanConfig ifs.lan40;
       "30-vlan50" = mkLanConfig ifs.lan50;
     };
   };
@@ -280,9 +348,8 @@ in
   networking.nftables.enable = true;
   networking.nftables.tables.firewall = {
     family = "inet";
+    # TODO: proper icmp settings
     content = ''
-      define LAN_IPV4_HOST = ${ifs.lan.p4}.100
-      define LAN_IPV6_HOST = ${ifs.lan.p6}::1:1000
       define ZONE_WAN_IFS = { ${ifs.wan.name} }
       define ZONE_LAN_IFS = {
           ${ifs.lan.name},
@@ -306,7 +373,7 @@ in
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {
-              tcp . $LAN_IPV6_HOST . https
+              tcp . ${ifs.lan.p6}::1 . https
           }
       }
 
@@ -392,8 +459,6 @@ in
           type nat hook prerouting priority dstnat; policy accept;
 
           # Port forwarding
-          # iifname $ZONE_WAN_IFS tcp dport https dnat ip to $LAN_IPV4_HOST
-          # tcp dport $PROX_PORT fib daddr type local dnat ip to $PROX_HOST
           fib daddr type local dnat ip to meta l4proto . th dport map @port_forward_v4
       }
 
@@ -416,20 +481,16 @@ in
       ifs.lan.name
       # ifs.lan10.name
       # ifs.lan20.name
+      ifs.lan30.name
+      ifs.lan40.name
       ifs.lan50.name
     ];
     dhcp-ddns.enable-updates = true;
     ddns-qualifying-suffix = "4.default.${ldomain}";
     subnet4 = [
-      ((mkDhcp4Subnet 1 ifs.lan) // {
-        reservations = [
-          {
-            hw-address = "bc:24:11:b7:27:4d";
-            hostname = "archy";
-            ip-address = "${ifs.lan.p4}.69";
-          }
-        ];
-      })
+      ((mkDhcp4Subnet 1 ifs.lan) // reservations.lan.v4)
+      (mkDhcp4Subnet 30 ifs.lan30)
+      (mkDhcp4Subnet 40 ifs.lan40)
       (mkDhcp4Subnet 50 ifs.lan50)
     ];
   };
@@ -440,21 +501,17 @@ in
       ifs.lan.name
       # ifs.lan10.name
       # ifs.lan20.name
+      ifs.lan30.name
+      ifs.lan40.name
       ifs.lan50.name
     ];
     # TODO: https://kea.readthedocs.io/en/latest/arm/ddns.html#dual-stack-environments
     dhcp-ddns.enable-updates = true;
     ddns-qualifying-suffix = "6.default.${ldomain}";
     subnet6 = [
-      ((mkDhcp6Subnet 1 ifs.lan) // {
-        reservations = [
-          {
-            duid = "00:04:59:c3:ce:9a:08:cf:fb:b7:fe:74:9c:e3:b7:44:bf:01";
-            hostname = "archy";
-            ip-addresses = [ "${ifs.lan.p6}::69" ];
-          }
-        ];
-      })
+      ((mkDhcp6Subnet 1 ifs.lan) // reservations.lan.v6)
+      (mkDhcp6Subnet 30 ifs.lan30)
+      (mkDhcp6Subnet 40 ifs.lan40)
       (mkDhcp6Subnet 50 ifs.lan50)
     ];
   };
@@ -481,16 +538,25 @@ in
       upstream_dns = [
         "quic://p0.freedns.controld.com"  # Default upstream
         "[/${ldomain}/][::1]:1053"        # Local domains to Knot (ddns)
+        "[/home/][${ifs.lan.ulaPrefix}::250]"  # .home domains to opnsense (temporary)
       ];
     };
     # https://adguard-dns.io/kb/general/dns-filtering-syntax/
     user_rules = [
       # DNS rewrites
       "|grouter.${domain}^$dnsrewrite=${ifs.lan.ulaAddr}"
+      "|pve-1.metal.${domain}^$dnsrewrite=${ifs.lan.p4}.5"
+      "|pve-3.metal.${domain}^$dnsrewrite=${ifs.lan.p4}.7"
+
+      "||lab.${domain}^$dnsrewrite=${pdFromWan}e::12:1"
+      "||lab.${domain}^$dnsrewrite=${ifs.lan10.p4}.12"
 
       # Allowed exceptions
       "@@||googleads.g.doubleclick.net"
-    ];
+    ]
+      # Alpina DNS rewrites
+      ++ map (host: "${host}${domain}^$dnsrewrite=${pdFromWan}e::11:1") alpinaDomains
+      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan10.p4}.11") alpinaDomains;
   };
 
   services.knot.enable = true;
