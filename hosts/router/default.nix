@@ -2,6 +2,9 @@
 let
   domain = "cazzzer.com";
   ldomain = "l.${domain}";
+  sysdomain = "sys.${domain}";
+
+  lanLL = "fe80::be24:11ff:fe83:d8de";
 
   mkIfConfig = {
     name_,
@@ -45,35 +48,35 @@ let
       name_ = "lan";
       domain_ = "lan.${ldomain}";
       p4_ = "${p4}.1";                   # .0/24
-      p6_ = "${pdFromWan}8";             # ::/64
+      p6_ = "${pdFromWan}f";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0001";  # ::/64
     };
     lan10 = mkIfConfig {
       name_ = "${lan.name}.10";
       domain_ = "lab.${ldomain}";
       p4_ = "${p4}.10";                  # .0/24
-      p6_ = "${pdFromWan}1";             # ::/64
+      p6_ = "${pdFromWan}e";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0010";  # ::/64
     };
     lan20 = mkIfConfig {
       name_ = "${lan.name}.20";
       domain_ = "life.${ldomain}";
       p4_ = "${p4}.20";                  # .0/24
-      p6_ = "${pdFromWan}2";             # ::/64
+      p6_ = "";                          # p6 not defined for lan20, managed by Att box
       ulaPrefix_ = "${ulaPrefix}:0020";  # ::/64
     };
     lan30 = mkIfConfig {
       name_ = "${lan.name}.30";
       domain_ = "iot.${ldomain}";
       p4_ = "${p4}.30";                  # .0/24
-      p6_ = "${pdFromWan}9";             # ::/64
+      p6_ = "${pdFromWan}c";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0030";  # ::/64
     };
     lan40 = mkIfConfig {
       name_ = "${lan.name}.40";
       domain_ = "kube.${ldomain}";
       p4_ = "${p4}.40";                  # .0/24
-      p6_ = "${pdFromWan}f";             # ::/64
+      p6_ = "${pdFromWan}b";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0040";  # ::/64
     };
     lan50 = mkIfConfig {
@@ -117,6 +120,21 @@ let
       hostname = "pve-3";
       ip-address = "${ifs.lan.p4}.7";
     }
+    {
+      hw-address = "22:d0:43:c6:31:92";
+      hostname = "truenas";
+      ip-address = "${ifs.lan.p4}.10";
+    }
+    {
+      hw-address = "1e:d5:56:ec:c7:4a";
+      hostname = "debbi";
+      ip-address = "${ifs.lan.p4}.11";
+    }
+    {
+      hw-address = "ee:42:75:2e:f1:a6";
+      hostname = "etappi";
+      ip-address = "${ifs.lan.p4}.12";
+    }
   ];
 
   reservations.lan.v6.reservations = [
@@ -124,6 +142,47 @@ let
       duid = "00:03:00:01:64:66:b3:78:9c:09";
       hostname = "openwrt";
       ip-addresses = [ "${ifs.lan.p6}::1:2" ];
+    }
+    {
+      duid = "00:01:00:01:2e:c0:63:23:22:d0:43:c6:31:92";
+      hostname = "truenas";
+      ip-addresses = [ "${ifs.lan.p6}::10:1" ];
+    }
+    {
+      duid = "00:02:00:00:ab:11:09:41:25:21:32:71:e3:77";
+      hostname = "debbi";
+      ip-addresses = [ "${ifs.lan.p6}::11:1" ];
+    }
+    {
+      duid = "00:02:00:00:ab:11:6b:56:93:72:0b:3c:84:11";
+      hostname = "etappi";
+      ip-addresses = [ "${ifs.lan.p6}::12:1" ];
+    }
+  ];
+
+  reservations.lan20.v4.reservations = [
+    {
+      # Router
+      hw-address = "1c:3b:f3:da:5f:cc";
+      hostname = "archer-ax3000";
+      ip-address = "${ifs.lan20.p4}.2";
+    }
+    {
+      # Printer
+      hw-address = "30:cd:a7:c5:40:71";
+      hostname = "SEC30CDA7C54071";
+      ip-address = "${ifs.lan20.p4}.9";
+    }
+    {
+      # 3D Printer
+      hw-address = "20:f8:5e:ff:ae:5f";
+      hostname = "GS_ffae5f";
+      ip-address = "${ifs.lan20.p4}.11";
+    }
+    {
+      hw-address = "70:85:c2:d8:87:3f";
+      hostname = "Yura-PC";
+      ip-address = "${ifs.lan20.p4}.40";
     }
   ];
 
@@ -166,34 +225,24 @@ let
       IPv6SendRA = true;
       Address = [ ifObj.addr4Sized ];
     };
-    ipv6Prefixes = [
-      {
+    ipv6Prefixes = lib.optionals (ifObj.p6 != "") [ {
         Prefix = ifObj.net6;
         Assign = true;
         # Token = [ "static::1" "eui64" ];
         Token = [ "static:${ifObj.ip6Token}" ];
-      }
-      {
-        Prefix = ifObj.ulaNet;
-        Assign = true;
-        Token = [ "static:${ifObj.ip6Token}" ];
-      }
-    ];
+      } ]
+      ++
+      lib.optionals (ifObj.ulaPrefix != "") [ {
+          Prefix = ifObj.ulaNet;
+          Assign = true;
+          Token = [ "static:${ifObj.ip6Token}" ];
+      } ];
+    ipv6RoutePrefixes = [ { Route = "${ulaPrefix}::/48"; } ];
     ipv6SendRAConfig = {
-      Managed = true;
-      OtherInformation = true;
+      Managed = (ifObj.p6 != "");
+      OtherInformation = (ifObj.p6 != "");
       EmitDNS = true;
       DNS = [ ifObj.ulaAddr ];
-    };
-  };
-
-  mkTempLanConfig = ifObj: {
-    matchConfig.Name = ifObj.name;
-    networkConfig = {
-      IPv4Forwarding = true;
-      # IPv6SendRA = true;
-      Address = [ "${ifObj.p4}.249/24" ];
-      # IPv6AcceptRA = true;
     };
   };
 
@@ -336,8 +385,8 @@ in
           ifs.lan50.name
         ];
       };
-      "30-vlan10" = mkTempLanConfig ifs.lan10;
-      "30-vlan20" = mkTempLanConfig ifs.lan20;
+      "30-vlan10" = mkLanConfig ifs.lan10;
+      "30-vlan20" = mkLanConfig ifs.lan20;
       "30-vlan30" = mkLanConfig ifs.lan30;
       "30-vlan40" = mkLanConfig ifs.lan40;
       "30-vlan50" = mkLanConfig ifs.lan50;
@@ -348,7 +397,6 @@ in
   networking.nftables.enable = true;
   networking.nftables.tables.firewall = {
     family = "inet";
-    # TODO: proper icmp settings
     content = ''
       define ZONE_WAN_IFS = { ${ifs.wan.name} }
       define ZONE_LAN_IFS = {
@@ -380,15 +428,24 @@ in
       chain input {
           type filter hook input priority filter; policy drop;
 
+          # Drop router adverts from self
+          # peculiarity due to wan and lan20 being bridged
+          # TODO: figure out a less jank way to do this
+          ip6 saddr ${lanLL} icmpv6 type nd-router-advert drop
+
           # Allow established and related connections
+          # All icmp stuff should (theoretically) be handled by ct related
+          # https://serverfault.com/a/632363
           ct state established,related accept
 
-          # Allow all traffic from loopback interface
-          iif lo accept
-
+          # However, that doesn't happen for router advertisements from what I can tell
+          # TODO: more testing
           # Allow ICMPv6 on link local addrs
           ip6 nexthdr icmpv6 ip6 saddr fe80::/10 accept
           ip6 nexthdr icmpv6 ip6 daddr fe80::/10 accept # TODO: not sure if necessary
+
+          # Allow all traffic from loopback interface
+          iif lo accept
 
           # Allow DHCPv6 client traffic
           ip6 daddr { fe80::/10, ff02::/16 } udp dport dhcpv6-server accept
@@ -427,6 +484,7 @@ in
       chain zone_lan_input {
           # Allow all ICMPv6 from LAN
           ip6 nexthdr icmpv6 accept
+
           # Allow all ICMP from LAN
           ip protocol icmp accept
 
@@ -440,7 +498,7 @@ in
           # ct status dnat accept
 
           # Allow all traffic from LAN to WAN, except ULAs
-          oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 drop
+          oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 drop  # Not sure if needed
           oifname $ZONE_WAN_IFS accept;
 
           # Allow traffic between LANs
@@ -479,8 +537,8 @@ in
   services.kea.dhcp4.settings = {
     interfaces-config.interfaces = [
       ifs.lan.name
-      # ifs.lan10.name
-      # ifs.lan20.name
+      ifs.lan10.name
+      ifs.lan20.name
       ifs.lan30.name
       ifs.lan40.name
       ifs.lan50.name
@@ -489,6 +547,8 @@ in
     ddns-qualifying-suffix = "4.default.${ldomain}";
     subnet4 = [
       ((mkDhcp4Subnet 1 ifs.lan) // reservations.lan.v4)
+      (mkDhcp4Subnet 10 ifs.lan10)
+      ((mkDhcp4Subnet 20 ifs.lan20) // reservations.lan20.v4)
       (mkDhcp4Subnet 30 ifs.lan30)
       (mkDhcp4Subnet 40 ifs.lan40)
       (mkDhcp4Subnet 50 ifs.lan50)
@@ -499,8 +559,8 @@ in
   services.kea.dhcp6.settings = {
     interfaces-config.interfaces = [
       ifs.lan.name
-      # ifs.lan10.name
-      # ifs.lan20.name
+      ifs.lan10.name
+      # ifs.lan20.name  # Managed by Att box
       ifs.lan30.name
       ifs.lan40.name
       ifs.lan50.name
@@ -510,6 +570,7 @@ in
     ddns-qualifying-suffix = "6.default.${ldomain}";
     subnet6 = [
       ((mkDhcp6Subnet 1 ifs.lan) // reservations.lan.v6)
+      (mkDhcp6Subnet 10 ifs.lan10)
       (mkDhcp6Subnet 30 ifs.lan30)
       (mkDhcp6Subnet 40 ifs.lan40)
       (mkDhcp6Subnet 50 ifs.lan50)
@@ -545,18 +606,20 @@ in
     user_rules = [
       # DNS rewrites
       "|grouter.${domain}^$dnsrewrite=${ifs.lan.ulaAddr}"
-      "|pve-1.metal.${domain}^$dnsrewrite=${ifs.lan.p4}.5"
-      "|pve-3.metal.${domain}^$dnsrewrite=${ifs.lan.p4}.7"
+      "|pve-1.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.5"
+      "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.7"
+      "|pve-1.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::5:1"
+      "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::7:1"
 
-      "||lab.${domain}^$dnsrewrite=${pdFromWan}e::12:1"
-      "||lab.${domain}^$dnsrewrite=${ifs.lan10.p4}.12"
+      "||lab.${domain}^$dnsrewrite=${ifs.lan.p6}::12:1"
+      "||lab.${domain}^$dnsrewrite=${ifs.lan.p4}.12"
 
       # Allowed exceptions
       "@@||googleads.g.doubleclick.net"
     ]
       # Alpina DNS rewrites
-      ++ map (host: "${host}${domain}^$dnsrewrite=${pdFromWan}e::11:1") alpinaDomains
-      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan10.p4}.11") alpinaDomains;
+      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p6}::11:1") alpinaDomains
+      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p4}.11") alpinaDomains;
   };
 
   services.knot.enable = true;
