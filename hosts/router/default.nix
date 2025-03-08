@@ -3,8 +3,12 @@ let
   domain = "cazzzer.com";
   ldomain = "l.${domain}";
   sysdomain = "sys.${domain}";
-
-  lanLL = "fe80::be24:11ff:fe83:d8de";
+  links = {
+    wanMAC = "bc:24:11:4f:c9:c4";
+    lanMAC = "bc:24:11:83:d8:de";
+    wanLL = "fe80::be24:11ff:fe4f:c9c4";
+    lanLL = "fe80::be24:11ff:fe83:d8de";
+  };
 
   mkIfConfig = {
     name_,
@@ -13,6 +17,8 @@ let
     p6_,  # /64
     ulaPrefix_,  # /64
     token? 1,
+    ip6Token_? "::${toString token}",
+    ulaToken_? "::${toString token}",
     }: rec {
       name = name_;
       domain = domain_;
@@ -24,13 +30,14 @@ let
       p6 = p6_;
       p6Size = 64;
       net6 = "${p6}::/${toString p6Size}";
-      ip6Token = "::${toString token}";
+      ip6Token = ip6Token_;
       addr6 = "${p6}${ip6Token}";
       addr6Sized = "${addr6}/${toString p6Size}";
       ulaPrefix = ulaPrefix_;
       ulaSize = 64;
       ulaNet = "${ulaPrefix}::/${toString ulaSize}";
-      ulaAddr = "${ulaPrefix}${ip6Token}";
+      ulaToken = ulaToken_;
+      ulaAddr = "${ulaPrefix}${ulaToken}";
       ulaAddrSized = "${ulaAddr}/${toString ulaSize}";
     };
 
@@ -62,8 +69,9 @@ let
       name_ = "${lan.name}.20";
       domain_ = "life.${ldomain}";
       p4_ = "${p4}.20";                  # .0/24
-      p6_ = "";                          # p6 not defined for lan20, managed by Att box
+      p6_ = "${pdFromWan}0";             # ::/64 managed by Att box
       ulaPrefix_ = "${ulaPrefix}:0020";  # ::/64
+      ip6Token_ = "::1:1";  # override ipv6 for lan20, since the Att box uses ::1 here
     };
     lan30 = mkIfConfig {
       name_ = "${lan.name}.30";
@@ -225,22 +233,25 @@ let
       IPv6SendRA = true;
       Address = [ ifObj.addr4Sized ];
     };
-    ipv6Prefixes = lib.optionals (ifObj.p6 != "") [ {
+    ipv6Prefixes = [
+      {
         Prefix = ifObj.net6;
         Assign = true;
         # Token = [ "static::1" "eui64" ];
         Token = [ "static:${ifObj.ip6Token}" ];
-      } ]
-      ++
-      lib.optionals (ifObj.ulaPrefix != "") [ {
+      }
+      {
           Prefix = ifObj.ulaNet;
           Assign = true;
-          Token = [ "static:${ifObj.ip6Token}" ];
-      } ];
+          Token = [ "static:${ifObj.ulaToken}" ];
+      }
+    ];
     ipv6RoutePrefixes = [ { Route = "${ulaPrefix}::/48"; } ];
     ipv6SendRAConfig = {
-      Managed = (ifObj.p6 != "");
-      OtherInformation = (ifObj.p6 != "");
+      # don't manage the att box subnet
+      # should work fine either way though
+      Managed = (ifObj.p6 != "${pdFromWan}0");
+      OtherInformation = (ifObj.p6 != "${pdFromWan}0");
       EmitDNS = true;
       DNS = [ ifObj.ulaAddr ];
     };
@@ -320,12 +331,12 @@ in
 
       # request the leases just for routing (so that the att box knows we're here)
       # actual ip assignments are static, based on $pdFromWan
-      ia_pd 1 -
-      ia_pd 2 -
-      ia_pd 3 -
-      ia_pd 4 -
-      ia_pd 5 -
-      # ia_pd 6 -
+      ia_pd 1/${ifs.lan.net6} -
+      ia_pd 10/${ifs.lan10.net6} -
+      # ia_pd 20/${pdFromWan}d::/64 -  # for opnsense (legacy services)
+      ia_pd 30/${ifs.lan30.net6} -
+      ia_pd 40/${ifs.lan40.net6} -
+      ia_pd 50/${ifs.lan50.net6} -
       # ia_pd 7 -
       # ia_pd 8 -
   '';
@@ -344,11 +355,11 @@ in
     # https://nixos.org/manual/nixos/stable/#sec-rename-ifs
     links = {
       "10-wan" = {
-        matchConfig.PermanentMACAddress = "bc:24:11:4f:c9:c4";
+        matchConfig.PermanentMACAddress = links.wanMAC;
         linkConfig.Name = ifs.wan.name;
       };
       "10-lan" = {
-        matchConfig.PermanentMACAddress = "bc:24:11:83:d8:de";
+        matchConfig.PermanentMACAddress = links.lanMAC;
         linkConfig.Name = ifs.lan.name;
       };
     };
@@ -386,7 +397,15 @@ in
         ];
       };
       "30-vlan10" = mkLanConfig ifs.lan10;
-      "30-vlan20" = mkLanConfig ifs.lan20;
+      "30-vlan20" = mkLanConfig ifs.lan20 // {
+        routes = [
+          {
+            # OPNsense subnet route
+            Destination = "${pdFromWan}d::/64";
+            Gateway = "fe80::1efd:8ff:fe71:954e";
+          }
+        ];
+      };
       "30-vlan30" = mkLanConfig ifs.lan30;
       "30-vlan40" = mkLanConfig ifs.lan40;
       "30-vlan50" = mkLanConfig ifs.lan50;
@@ -407,10 +426,11 @@ in
           ${ifs.lan40.name},
           ${ifs.lan50.name},
       }
+      define OPNSENSE_P6 = ${pdFromWan}d::/64
       define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
 
       define ALLOWED_TCP_PORTS = { ssh, https }
-      define ALLOWED_UDP_PORTS = { domain }
+      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain }
 
       map port_forward_v4 {
           type inet_proto . inet_service : ipv4_addr . inet_service
@@ -421,7 +441,7 @@ in
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {
-              tcp . ${ifs.lan.p6}::1 . https
+              tcp . ${ifs.lan.p6}::11:1 . https
           }
       }
 
@@ -431,7 +451,9 @@ in
           # Drop router adverts from self
           # peculiarity due to wan and lan20 being bridged
           # TODO: figure out a less jank way to do this
-          ip6 saddr ${lanLL} icmpv6 type nd-router-advert drop
+          iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} icmpv6 type nd-router-advert log drop
+          # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} log drop
+          # iifname $ZONE_LAN_IFS ip6 saddr ${links.wanLL} log drop
 
           # Allow established and related connections
           # All icmp stuff should (theoretically) be handled by ct related
@@ -440,20 +462,24 @@ in
 
           # However, that doesn't happen for router advertisements from what I can tell
           # TODO: more testing
-          # Allow ICMPv6 on link local addrs
-          ip6 nexthdr icmpv6 ip6 saddr fe80::/10 accept
+          # Allow ICMPv6 on local addrs
+          ip6 nexthdr icmpv6 ip6 saddr { fe80::/10, ${pdFromWan}0::/60 } accept
           ip6 nexthdr icmpv6 ip6 daddr fe80::/10 accept # TODO: not sure if necessary
 
           # Allow all traffic from loopback interface
           iif lo accept
 
           # Allow DHCPv6 client traffic
-          ip6 daddr { fe80::/10, ff02::/16 } udp dport dhcpv6-server accept
+          ip6 daddr { fe80::/10, ff02::/16 } th dport dhcpv6-server accept
 
           # WAN zone input rules
           iifname $ZONE_WAN_IFS jump zone_wan_input
           # LAN zone input rules
+          iifname $ZONE_LAN_IFS accept
           iifname $ZONE_LAN_IFS jump zone_lan_input
+          ip6 saddr $OPNSENSE_P6 jump zone_lan_input
+
+          log
       }
 
       chain forward {
@@ -466,6 +492,7 @@ in
           iifname $ZONE_WAN_IFS jump zone_wan_forward
           # LAN zone forward rules
           iifname $ZONE_LAN_IFS jump zone_lan_forward
+          ip6 saddr $OPNSENSE_P6 jump zone_lan_forward
       }
 
       chain zone_wan_input {
