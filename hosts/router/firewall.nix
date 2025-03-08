@@ -1,0 +1,165 @@
+{ config, lib, pkgs, ... }:
+let
+  vars = import ./vars.nix;
+  links = vars.links;
+  ifs = vars.ifs;
+  pdFromWan = vars.pdFromWan;
+in
+{
+  networking.firewall.enable = false;
+  networking.nftables.enable = true;
+  networking.nftables.tables.firewall = {
+    family = "inet";
+    content = ''
+      define ZONE_WAN_IFS = { ${ifs.wan.name} }
+      define ZONE_LAN_IFS = {
+          ${ifs.lan.name},
+          ${ifs.lan10.name},
+          ${ifs.lan20.name},
+          ${ifs.lan30.name},
+          ${ifs.lan40.name},
+          ${ifs.lan50.name},
+      }
+      define OPNSENSE_NET6 = ${pdFromWan}d::/64
+      define ZONE_LAN_EXTRA_NET6 = {
+          ${ifs.lan20.net6},  # needed since packets can come in from wan on these addrs
+          $OPNSENSE_NET6,
+      }
+      define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
+
+      define ALLOWED_TCP_PORTS = { ssh, https }
+      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain }
+
+      map port_forward_v4 {
+          type inet_proto . inet_service : ipv4_addr . inet_service
+          elements = {
+              tcp . 8006 : ${ifs.lan50.p4}.10 . 8006
+          }
+      }
+      set port_forward_v6 {
+          type inet_proto . ipv6_addr . inet_service
+          elements = {
+              tcp . ${ifs.lan.p6}::11:1 . https,
+              tcp . ${ifs.lan.p6}:1cd5:56ff:feec:c74a . https,
+          }
+      }
+
+      chain input {
+          type filter hook input priority filter; policy drop;
+
+          # Drop router adverts from self
+          # peculiarity due to wan and lan20 being bridged
+          # TODO: figure out a less jank way to do this
+          iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} icmpv6 type nd-router-advert log prefix "self radvt: " drop
+          # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} ip6 nexthdr icmpv6 log prefix "self icmpv6: " drop
+          # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} log prefix "self llv6: " drop
+          # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} log drop
+          # iifname $ZONE_LAN_IFS ip6 saddr ${links.wanLL} log drop
+
+          # Allow established and related connections
+          # All icmp stuff should (theoretically) be handled by ct related
+          # https://serverfault.com/a/632363
+          ct state established,related accept
+
+          # However, that doesn't happen for router advertisements from what I can tell
+          # TODO: more testing
+          # Allow ICMPv6 on local addrs
+          ip6 nexthdr icmpv6 ip6 saddr { fe80::/10, ${pdFromWan}0::/60 } accept
+          ip6 nexthdr icmpv6 ip6 daddr fe80::/10 accept # TODO: not sure if necessary
+
+          # Allow all traffic from loopback interface
+          iif lo accept
+
+          # Allow DHCPv6 traffic
+          # I thought dhcpv6-client traffic would be accepted by established/related,
+          # but apparently not.
+          ip6 daddr { fe80::/10, ff02::/16 } th dport { dhcpv6-client, dhcpv6-server } accept
+
+          # WAN zone input rules
+          iifname $ZONE_WAN_IFS jump zone_wan_input
+          # LAN zone input rules
+          iifname $ZONE_LAN_IFS accept
+          iifname $ZONE_LAN_IFS jump zone_lan_input
+          ip6 saddr $ZONE_LAN_EXTRA_NET6 jump zone_lan_input
+
+          # log
+      }
+
+      chain forward {
+          type filter hook forward priority filter; policy drop;
+
+          # Allow established and related connections
+          ct state established,related accept
+
+          # WAN zone forward rules
+          iifname $ZONE_WAN_IFS jump zone_wan_forward
+          # LAN zone forward rules
+          iifname $ZONE_LAN_IFS jump zone_lan_forward
+          ip6 saddr $ZONE_LAN_EXTRA_NET6 jump zone_lan_forward
+      }
+
+      chain zone_wan_input {
+          # Allow SSH from WAN (if needed)
+          tcp dport ssh accept
+      }
+
+      chain zone_wan_forward {
+          # Port forwarding
+          ct status dnat accept
+
+          # Allowed IPv6 ports
+          meta l4proto . ip6 daddr . th dport @port_forward_v6 accept
+      }
+
+      chain zone_lan_input {
+          # Allow all ICMPv6 from LAN
+          ip6 nexthdr icmpv6 accept
+
+          # Allow all ICMP from LAN
+          ip protocol icmp accept
+
+          # Allow specific services from LAN
+          tcp dport $ALLOWED_TCP_PORTS accept
+          udp dport $ALLOWED_UDP_PORTS accept
+      }
+
+      chain zone_lan_forward {
+          # Allow port forwarded targets
+          # ct status dnat accept
+
+          # Allow all traffic from LAN to WAN, except ULAs
+          oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 drop  # Not sure if needed
+          oifname $ZONE_WAN_IFS accept;
+
+          # Allow traffic between LANs
+          oifname $ZONE_LAN_IFS accept
+      }
+
+      chain output {
+          # Accept anything out of self by default
+          type filter hook output priority filter; policy accept;
+          # NAT reflection
+          # oif lo ip daddr != 127.0.0.0/8 dnat ip to meta l4proto . th dport map @port_forward_v4
+      }
+
+      chain prerouting {
+          # Initial step, accept by default
+          type nat hook prerouting priority dstnat; policy accept;
+
+          # Port forwarding
+          fib daddr type local dnat ip to meta l4proto . th dport map @port_forward_v4
+      }
+
+      chain postrouting {
+          # Last step, accept by default
+          type nat hook postrouting priority srcnat; policy accept;
+
+          # Masquerade LAN addrs
+          oifname $ZONE_WAN_IFS ip saddr $RFC1918 masquerade
+
+          # Optional IPv6 masquerading (big L if enabled, don't forget to allow forwarding)
+          # oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 masquerade
+      }
+    '';
+  };
+}
