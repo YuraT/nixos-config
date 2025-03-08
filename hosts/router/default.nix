@@ -230,8 +230,8 @@ let
     matchConfig.Name = ifObj.name;
     networkConfig = {
       IPv4Forwarding = true;
-      IPv6SendRA = true;
-      Address = [ ifObj.addr4Sized ];
+      IPv6SendRA = (ifObj.name != ifs.lan10.name);  # TODO: temporary test, remove
+      Address = [ ifObj.addr4Sized ifObj.addr6Sized ifObj.ulaAddrSized ];
     };
     ipv6Prefixes = [
       {
@@ -396,7 +396,7 @@ in
           ifs.lan50.name
         ];
       };
-      "30-vlan10" = mkLanConfig ifs.lan10;
+      # "30-vlan10" = mkLanConfig ifs.lan10;
       "30-vlan20" = mkLanConfig ifs.lan20 // {
         routes = [
           {
@@ -411,6 +411,43 @@ in
       "30-vlan50" = mkLanConfig ifs.lan50;
     };
   };
+
+#  networking.interfaces.${ifs.lan10.name} = {
+#    ipv4.addresses = [ { address = ifs.lan10.addr4; prefixLength = ifs.lan10.p4Size; } ];
+#    ipv6.addresses = [
+#      {
+#        address = ifs.lan10.addr6;
+#        prefixLength = ifs.lan10.p6Size;
+#      }
+#      {
+#        address = ifs.lan10.ulaAddr;
+#        prefixLength = ifs.lan10.ulaSize;
+#      }
+#    ];
+#  };
+
+  services.radvd.enable = true;
+  services.radvd.config = ''
+    interface ${ifs.lan10.name} {
+      RDNSS ${ifs.lan.ulaAddr} {
+      };
+      AdvSendAdvert on;
+      # MinRtrAdvInterval 3;
+      # MaxRtrAdvInterval 10;
+      AdvManagedFlag on;
+      # AdvOtherConfigFlag on;
+      prefix ${ifs.lan10.net6} {
+        AdvOnLink on;
+        AdvAutonomous on;
+      };
+      prefix ${ifs.lan10.ulaNet} {
+        AdvOnLink on;
+        AdvAutonomous on;
+      };
+      route ${ulaPrefix}::/48 {
+      };
+    };
+  '';
 
   networking.firewall.enable = false;
   networking.nftables.enable = true;
@@ -441,7 +478,8 @@ in
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {
-              tcp . ${ifs.lan.p6}::11:1 . https
+              tcp . ${ifs.lan.p6}::11:1 . https,
+              tcp . ${ifs.lan.p6}:1cd5:56ff:feec:c74a . https,
           }
       }
 
@@ -645,7 +683,7 @@ in
       "@@||googleads.g.doubleclick.net"
     ]
       # Alpina DNS rewrites
-      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p6}::11:1") alpinaDomains
+      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p6}:1cd5:56ff:feec:c74a") alpinaDomains
       ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p4}.11") alpinaDomains;
   };
 
