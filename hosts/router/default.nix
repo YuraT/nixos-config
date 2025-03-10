@@ -336,7 +336,7 @@ in
       # request the leases just for routing (so that the att box knows we're here)
       # actual ip assignments are static, based on $pdFromWan
       ia_pd 1/${ifs.lan.net6} -
-      ia_pd 10/${ifs.lan10.net6} -
+      # ia_pd 10/${ifs.lan10.net6} -
       # ia_pd 20/${pdFromWan}d::/64 -  # for opnsense (legacy services)
       ia_pd 30/${ifs.lan30.net6} -
       ia_pd 40/${ifs.lan40.net6} -
@@ -369,7 +369,7 @@ in
     };
 
     netdevs = {
-      "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
+      # "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
       "10-vlan20" = mkVlanDev { id = 20; name = ifs.lan20.name; };
       "10-vlan30" = mkVlanDev { id = 30; name = ifs.lan30.name; };
       "10-vlan40" = mkVlanDev { id = 40; name = ifs.lan40.name; };
@@ -393,7 +393,7 @@ in
       };
       "20-lan" = (mkLanConfig ifs.lan) // {
         vlan = [
-          ifs.lan10.name
+          # ifs.lan10.name
           ifs.lan20.name
           ifs.lan30.name
           ifs.lan40.name
@@ -417,23 +417,23 @@ in
   };
 
   networking.interfaces = {
-    ${ifs.lan10.name} = {
-      ipv4.addresses = [ { address = ifs.lan10.addr4; prefixLength = ifs.lan10.p4Size; } ];
-      ipv6.addresses = [
-        {
-          address = ifs.lan10.addr6;
-          prefixLength = ifs.lan10.p6Size;
-        }
-        {
-          address = ifs.lan10.ulaAddr;
-          prefixLength = ifs.lan10.ulaSize;
-        }
-      ];
-    };
+#    ${ifs.lan10.name} = {
+#      ipv4.addresses = [ { address = ifs.lan10.addr4; prefixLength = ifs.lan10.p4Size; } ];
+#      ipv6.addresses = [
+#        {
+#          address = ifs.lan10.addr6;
+#          prefixLength = ifs.lan10.p6Size;
+#        }
+#        {
+#          address = ifs.lan10.ulaAddr;
+#          prefixLength = ifs.lan10.ulaSize;
+#        }
+#      ];
+#    };
   };
   networking.dhcpcd.allowInterfaces = [ ifs.wan.name ];
 
-  services.radvd.enable = true;
+  services.radvd.enable = false;
   services.radvd.config = ''
     interface ${ifs.lan10.name} {
       RDNSS ${ifs.lan.ulaAddr} {
@@ -609,7 +609,7 @@ in
   services.kea.dhcp4.settings = {
     interfaces-config.interfaces = [
       ifs.lan.name
-      ifs.lan10.name
+      # ifs.lan10.name
       ifs.lan20.name
       ifs.lan30.name
       ifs.lan40.name
@@ -619,7 +619,7 @@ in
     ddns-qualifying-suffix = "4.default.${ldomain}";
     subnet4 = [
       ((mkDhcp4Subnet 1 ifs.lan) // reservations.lan.v4)
-      (mkDhcp4Subnet 10 ifs.lan10)
+      # (mkDhcp4Subnet 10 ifs.lan10)
       ((mkDhcp4Subnet 20 ifs.lan20) // reservations.lan20.v4)
       (mkDhcp4Subnet 30 ifs.lan30)
       (mkDhcp4Subnet 40 ifs.lan40)
@@ -631,7 +631,7 @@ in
   services.kea.dhcp6.settings = {
     interfaces-config.interfaces = [
       ifs.lan.name
-      ifs.lan10.name
+      # ifs.lan10.name
       # ifs.lan20.name  # Managed by Att box
       ifs.lan30.name
       ifs.lan40.name
@@ -642,7 +642,7 @@ in
     ddns-qualifying-suffix = "6.default.${ldomain}";
     subnet6 = [
       ((mkDhcp6Subnet 1 ifs.lan) // reservations.lan.v6)
-      (mkDhcp6Subnet 10 ifs.lan10)
+      # (mkDhcp6Subnet 10 ifs.lan10)
       (mkDhcp6Subnet 30 ifs.lan30)
       (mkDhcp6Subnet 40 ifs.lan40)
       (mkDhcp6Subnet 50 ifs.lan50)
