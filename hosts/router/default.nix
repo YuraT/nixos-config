@@ -322,6 +322,10 @@ in
     interface ${ifs.wan.name}
       ipv6rs
       dhcp6
+      duid
+      ipv6only
+      nohook resolv.conf, yp, hostname, ntp
+      option rapid_commit
 
       # this doesn't play well with networkd
       # ia_na
@@ -412,19 +416,22 @@ in
     };
   };
 
-#  networking.interfaces.${ifs.lan10.name} = {
-#    ipv4.addresses = [ { address = ifs.lan10.addr4; prefixLength = ifs.lan10.p4Size; } ];
-#    ipv6.addresses = [
-#      {
-#        address = ifs.lan10.addr6;
-#        prefixLength = ifs.lan10.p6Size;
-#      }
-#      {
-#        address = ifs.lan10.ulaAddr;
-#        prefixLength = ifs.lan10.ulaSize;
-#      }
-#    ];
-#  };
+  networking.interfaces = {
+    ${ifs.lan10.name} = {
+      ipv4.addresses = [ { address = ifs.lan10.addr4; prefixLength = ifs.lan10.p4Size; } ];
+      ipv6.addresses = [
+        {
+          address = ifs.lan10.addr6;
+          prefixLength = ifs.lan10.p6Size;
+        }
+        {
+          address = ifs.lan10.ulaAddr;
+          prefixLength = ifs.lan10.ulaSize;
+        }
+      ];
+    };
+  };
+  networking.dhcpcd.allowInterfaces = [ ifs.wan.name ];
 
   services.radvd.enable = true;
   services.radvd.config = ''
