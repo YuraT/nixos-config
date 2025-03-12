@@ -347,6 +347,30 @@ in
       # ia_pd 8 -
   '';
 
+  systemd.timers."restart-networkd" = {
+
+  };
+
+  systemd.timers."restart-networkd" = {
+    wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "1m";
+        OnUnitActiveSec = "1m";
+        Unit = "restart-networkd.service";
+      };
+  };
+
+  systemd.services."restart-networkd" = {
+    script = ''
+      set -eu
+      ${pkgs.systemd}/bin/systemctl restart systemd-networkd
+    '';
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+    };
+  };
+
   networking.useNetworkd = true;
   systemd.network.enable = true;
   systemd.network = {
