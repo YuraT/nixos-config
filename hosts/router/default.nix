@@ -50,6 +50,7 @@ let
       addr4 = "192.168.1.61";
       addr4Sized = "${addr4}/24";
       gw4 = "192.168.1.254";
+      gw6 = "fe80::e21f:2bff:fe96:e952";
     };
     lan = mkIfConfig {
       name_ = "lan";
@@ -325,6 +326,7 @@ in
       duid
       ipv6only
       nohook resolv.conf, yp, hostname, ntp
+      nogateway
       option rapid_commit
 
       # this doesn't play well with networkd
@@ -387,7 +389,10 @@ in
           Address = [ ifs.wan.addr4Sized ];
           IPv6AcceptRA = false;
         };
-        routes = [ { Gateway = ifs.wan.gw4; } ];
+        routes = [
+          { Gateway = ifs.wan.gw4; }
+          { Gateway = ifs.wan.gw6; }
+        ];
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
       };
