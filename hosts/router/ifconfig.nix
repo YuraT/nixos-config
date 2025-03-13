@@ -18,7 +18,7 @@ let
     matchConfig.Name = ifObj.name;
     networkConfig = {
       IPv4Forwarding = true;
-      IPv6SendRA = (ifObj.name != ifs.lan10.name);  # TODO: temporary test, remove
+      IPv6SendRA = true;
       Address = [ ifObj.addr4Sized ifObj.addr6Sized ifObj.ulaAddrSized ];
     };
     ipv6Prefixes = [
@@ -44,37 +44,35 @@ let
       DNS = [ ifObj.ulaAddr ];
     };
   };
-
 in
 {
   # It is impossible to do multiple prefix requests with networkd,
   # so I use dhcpcd for this
   # https://github.com/systemd/systemd/issues/22571
-  networking.dhcpcd.enable = true;
   # https://github.com/systemd/systemd/issues/22571#issuecomment-2094905496
   # https://gist.github.com/csamsel/0f8cca3b2e64d7e4cc47819ec5ba9396
+  networking.dhcpcd.enable = true;
+  networking.dhcpcd.allowInterfaces = [ ifs.wan.name ];
   networking.dhcpcd.extraConfig = ''
-    duid
-    ipv6only
-    nodhcp6
-    noipv6rs
     nohook resolv.conf, yp, hostname, ntp
-    option rapid_commit
 
     interface ${ifs.wan.name}
+      # IPv4 (Static)
+      nodhcp
+      noipv4ll
+      static ip_address=${ifs.wan.addr4Sized}
+      static routers=${ifs.wan.gw4}
+
+      # IPv6
+      duid
       ipv6rs
       dhcp6
-      duid
-      ipv6only
-      nohook resolv.conf, yp, hostname, ntp
-      nogateway
       option rapid_commit
 
-      # this doesn't play well with networkd
-      # ia_na
-      # ia_pd 1 ${ifs.lan.name}/0
-      # ia_pd 2 ${ifs.lan10.name}/0
-      # ia_pd 3 ${ifs.lan20.name}/0
+      # DHCPv6 addr
+      ia_na
+
+      # DHCPv6 Prefix Delegation
 
       # request the leases just for routing (so that the att box knows we're here)
       # actual ip assignments are static, based on $pdFromWan
@@ -86,27 +84,13 @@ in
       ia_pd 50/${ifs.lan50.net6} -
       # ia_pd 7 -
       # ia_pd 8 -
+
+      # the leases can be assigned to the interfaces,
+      # but this doesn't play well with networkd
+      # ia_pd 1 ${ifs.lan.name}/0
+      # ia_pd 2 ${ifs.lan10.name}/0
+      # ia_pd 3 ${ifs.lan20.name}/0
   '';
-
-  systemd.timers."restart-networkd" = {
-    wantedBy = [ "timers.target" ];
-      timerConfig = {
-        OnBootSec = "1m";
-        OnUnitActiveSec = "1m";
-        Unit = "restart-networkd.service";
-      };
-  };
-
-  systemd.services."restart-networkd" = {
-    script = ''
-      set -eu
-      ${pkgs.systemd}/bin/systemctl restart systemd-networkd
-    '';
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-    };
-  };
 
   networking.useNetworkd = true;
   systemd.network.enable = true;
@@ -142,20 +126,10 @@ in
     networks = {
       "10-wan" = {
         matchConfig.Name = ifs.wan.name;
-        networkConfig = {
-          # start a DHCP Client for IPv4 Addressing/Routing
-          # DHCP = "ipv4";
-          # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
-          # let dhcpcd handle this
-          Address = [ ifs.wan.addr4Sized ];
-          IPv6AcceptRA = false;
+        linkConfig = {
+          Unmanaged = true;
+          RequiredForOnline = "routable";
         };
-        routes = [
-          { Gateway = ifs.wan.gw4; }
-          { Gateway = ifs.wan.gw6; }
-        ];
-        # make routing on this interface a dependency for network-online.target
-        linkConfig.RequiredForOnline = "routable";
       };
       "20-lan" = (mkLanConfig ifs.lan) // {
         vlan = [
@@ -182,43 +156,28 @@ in
     };
   };
 
-  networking.interfaces = {
-#    ${ifs.lan10.name} = {
-#      ipv4.addresses = [ { address = ifs.lan10.addr4; prefixLength = ifs.lan10.p4Size; } ];
-#      ipv6.addresses = [
-#        {
-#          address = ifs.lan10.addr6;
-#          prefixLength = ifs.lan10.p6Size;
-#        }
-#        {
-#          address = ifs.lan10.ulaAddr;
-#          prefixLength = ifs.lan10.ulaSize;
-#        }
-#      ];
-#    };
+  # For some reason, the interfaces stop receiving route solicitations after a while.
+  # Regular router adverts still get sent out at intervals, but this breaks dhcp6 clients.
+  # Restarting networkd makes it work again, I have no clue why.
+  # This is jank af, but I've tried a bunch of other stuff with no success
+  # and I'm giving up (for now).
+  systemd.timers."restart-networkd" = {
+    wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "1m";
+        OnUnitActiveSec = "1m";
+        Unit = "restart-networkd.service";
+      };
   };
-  networking.dhcpcd.allowInterfaces = [ ifs.wan.name ];
 
-  services.radvd.enable = false;
-  services.radvd.config = ''
-    interface ${ifs.lan10.name} {
-      RDNSS ${ifs.lan.ulaAddr} {
-      };
-      AdvSendAdvert on;
-      # MinRtrAdvInterval 3;
-      # MaxRtrAdvInterval 10;
-      AdvManagedFlag on;
-      # AdvOtherConfigFlag on;
-      prefix ${ifs.lan10.net6} {
-        AdvOnLink on;
-        AdvAutonomous on;
-      };
-      prefix ${ifs.lan10.ulaNet} {
-        AdvOnLink on;
-        AdvAutonomous on;
-      };
-      route ${ulaPrefix}::/48 {
-      };
+  systemd.services."restart-networkd" = {
+    script = ''
+      set -eu
+      ${pkgs.systemd}/bin/systemctl restart systemd-networkd
+    '';
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
     };
-  '';
+  };
 }

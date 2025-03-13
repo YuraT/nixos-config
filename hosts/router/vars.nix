@@ -50,7 +50,6 @@ rec {
       addr4 = "192.168.1.61";
       addr4Sized = "${addr4}/24";
       gw4 = "192.168.1.254";
-      gw6 = "fe80::e21f:2bff:fe96:e952";
     };
     lan = mkIfConfig {
       name_ = "lan";
