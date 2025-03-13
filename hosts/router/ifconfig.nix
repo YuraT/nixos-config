@@ -77,7 +77,7 @@ in
       # request the leases just for routing (so that the att box knows we're here)
       # actual ip assignments are static, based on $pdFromWan
       ia_pd 1/${ifs.lan.net6} -
-      # ia_pd 10/${ifs.lan10.net6} -
+      ia_pd 10/${ifs.lan10.net6} -
       # ia_pd 20/${pdFromWan}d::/64 -  # for opnsense (legacy services)
       ia_pd 30/${ifs.lan30.net6} -
       ia_pd 40/${ifs.lan40.net6} -
@@ -116,7 +116,7 @@ in
     };
 
     netdevs = {
-      # "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
+      "10-vlan10" = mkVlanDev { id = 10; name = ifs.lan10.name; };
       "10-vlan20" = mkVlanDev { id = 20; name = ifs.lan20.name; };
       "10-vlan30" = mkVlanDev { id = 30; name = ifs.lan30.name; };
       "10-vlan40" = mkVlanDev { id = 40; name = ifs.lan40.name; };
@@ -133,23 +133,15 @@ in
       };
       "20-lan" = (mkLanConfig ifs.lan) // {
         vlan = [
-          # ifs.lan10.name
+          ifs.lan10.name
           ifs.lan20.name
           ifs.lan30.name
           ifs.lan40.name
           ifs.lan50.name
         ];
       };
-      # "30-vlan10" = mkLanConfig ifs.lan10;
-      "30-vlan20" = mkLanConfig ifs.lan20 // {
-        routes = [
-          {
-            # OPNsense subnet route
-            Destination = "${pdFromWan}d::/64";
-            Gateway = "fe80::1efd:8ff:fe71:954e";
-          }
-        ];
-      };
+      "30-vlan10" = mkLanConfig ifs.lan10;
+      "30-vlan20" = mkLanConfig ifs.lan20;
       "30-vlan30" = mkLanConfig ifs.lan30;
       "30-vlan40" = mkLanConfig ifs.lan40;
       "30-vlan50" = mkLanConfig ifs.lan50;

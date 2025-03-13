@@ -131,7 +131,7 @@ in
   services.kea.dhcp4.settings = {
     interfaces-config.interfaces = [
       ifs.lan.name
-      # ifs.lan10.name
+      ifs.lan10.name
       ifs.lan20.name
       ifs.lan30.name
       ifs.lan40.name
@@ -141,7 +141,7 @@ in
     ddns-qualifying-suffix = "4.default.${ldomain}";
     subnet4 = [
       ((mkDhcp4Subnet 1 ifs.lan) // reservations.lan.v4)
-      # (mkDhcp4Subnet 10 ifs.lan10)
+      (mkDhcp4Subnet 10 ifs.lan10)
       ((mkDhcp4Subnet 20 ifs.lan20) // reservations.lan20.v4)
       (mkDhcp4Subnet 30 ifs.lan30)
       (mkDhcp4Subnet 40 ifs.lan40)
@@ -153,7 +153,7 @@ in
   services.kea.dhcp6.settings = {
     interfaces-config.interfaces = [
       ifs.lan.name
-      # ifs.lan10.name
+      ifs.lan10.name
       # ifs.lan20.name  # Managed by Att box
       ifs.lan30.name
       ifs.lan40.name
@@ -164,7 +164,7 @@ in
     ddns-qualifying-suffix = "6.default.${ldomain}";
     subnet6 = [
       ((mkDhcp6Subnet 1 ifs.lan) // reservations.lan.v6)
-      # (mkDhcp6Subnet 10 ifs.lan10)
+      (mkDhcp6Subnet 10 ifs.lan10)
       (mkDhcp6Subnet 30 ifs.lan30)
       (mkDhcp6Subnet 40 ifs.lan40)
       (mkDhcp6Subnet 50 ifs.lan50)
