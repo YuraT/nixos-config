@@ -1,0 +1,117 @@
+{ config, lib, pkgs, ... }:
+let
+  vars = import ./vars.nix;
+  domain = vars.domain;
+  ldomain = vars.ldomain;
+  sysdomain = vars.sysdomain;
+  ifs = vars.ifs;
+
+  alpinaDomains = [
+    "|"
+    "|nc."
+    "|sonarr."
+    "|radarr."
+    "|prowlarr."
+    "|qbit."
+    "|gitea."
+    "|traefik."
+    "|auth."
+    "||s3."
+    "|minio."
+    "|jellyfin."
+    "|whoami."
+    "|grafana."
+    "|influxdb."
+    "|uptime."
+    "|opnsense."
+    "|vpgen."
+    "|woodpecker."
+    "||pgrok."
+    "|sync."
+  ];
+in
+{
+  # https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+  # For upstream quic dns
+  boot.kernel.sysctl."net.core.wmem_max" = 7500000;
+  boot.kernel.sysctl."net.core.rmem_max" = 7500000;
+
+  services.resolved.enable = false;
+  networking.resolvconf.enable = true;
+  networking.resolvconf.useLocalResolver = true;
+
+  services.adguardhome.enable = true;
+  services.adguardhome.mutableSettings = false;
+  services.adguardhome.settings = {
+    dns = {
+      bootstrap_dns = [ "1.1.1.1" "9.9.9.9" ];
+      upstream_dns = [
+        "quic://p0.freedns.controld.com"  # Default upstream
+        "[/${ldomain}/][::1]:1053"        # Local domains to Knot (ddns)
+        "[/home/][${ifs.lan.ulaPrefix}::250]"  # .home domains to opnsense (temporary)
+      ];
+    };
+    # https://adguard-dns.io/kb/general/dns-filtering-syntax/
+    user_rules = [
+      # DNS rewrites
+      "|grouter.${domain}^$dnsrewrite=${ifs.lan.ulaAddr}"
+      "|pve-1.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.5"
+      "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.7"
+      "|pve-1.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::5:1"
+      "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::7:1"
+
+      "||lab.${domain}^$dnsrewrite=${ifs.lan.p6}::12:1"
+      "||lab.${domain}^$dnsrewrite=${ifs.lan.p4}.12"
+
+      # Allowed exceptions
+      "@@||googleads.g.doubleclick.net"
+    ]
+      # Alpina DNS rewrites
+      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p6}:1cd5:56ff:feec:c74a") alpinaDomains
+      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p4}.11") alpinaDomains;
+  };
+
+  services.knot.enable = true;
+  services.knot.settings = {
+    # server.listen = "0.0.0.0@1053";
+    server.listen = "::1@1053";
+    # TODO: templates
+    zone = [
+      {
+        domain = ldomain;
+        storage = "/var/lib/knot/zones";
+        file = "${ldomain}.zone";
+        acl = [ "allow_localhost_update" ];
+      }
+    ];
+    acl = [
+      {
+        id = "allow_localhost_update";
+        address = [ "::1" "127.0.0.1" ];
+        action = [ "update" ];
+      }
+    ];
+  };
+  # Ensure the zone file exists
+  system.activationScripts.knotZoneFile = ''
+    ZONE_DIR="/var/lib/knot/zones"
+    ZONE_FILE="$ZONE_DIR/${ldomain}.zone"
+
+    # Create the directory if it doesn't exist
+    mkdir -p "$ZONE_DIR"
+
+    # Check if the zone file exists
+    if [ ! -f "$ZONE_FILE" ]; then
+      # Create the zone file with a basic SOA record
+      # Serial; Refresh; Retry; Expire; Negative Cache TTL;
+      echo "${ldomain}. 3600 SOA ns.${ldomain}. admin.${ldomain}. 1 86400 900 691200 3600" > "$ZONE_FILE"
+      echo "Created new zone file: $ZONE_FILE"
+    else
+      echo "Zone file already exists: $ZONE_FILE"
+    fi
+
+    # Ensure proper ownership and permissions
+    chown -R knot:knot "/var/lib/knot"
+    chmod 644 "$ZONE_FILE"
+  '';
+}
