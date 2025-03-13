@@ -209,13 +209,35 @@
   # fonts.fontconfig.allowBitmaps = false;
   
   environment.systemPackages = with pkgs; [
-    darkman
     dust
-    efibootmgr
     eza
     fastfetch
     fd
+    helix
+    micro
+    ripgrep
+    starship
+    tealdeer
+  ] ++ [
+    efibootmgr
     ffmpeg
+    file
+    fq
+    gnumake
+    ijq
+    jq
+    ldns
+    mediainfo
+    rbw
+    restic
+    resticprofile
+    rclone
+    ripgrep-all
+    rustscan
+    whois
+    yt-dlp
+  ] ++ [
+    darkman
     host-spawn # for flatpaks
     kdePackages.filelight
     kdePackages.flatpak-kcm
@@ -223,8 +245,14 @@
     kdePackages.yakuake
     gcr
     gnome-keyring # config for this and some others
-    gnumake
-    helix
+    mpv
+    nextcloud-client
+    lxqt.pavucontrol-qt
+    pinentry
+    tela-circle-icon-theme
+    virt-viewer
+    waypipe
+  ] ++ [
     # jetbrains.rust-rover
     # jetbrains.goland
     jetbrains.clion
@@ -232,22 +260,7 @@
     jetbrains.pycharm-professional
     jetbrains.webstorm
     android-studio
-    mediainfo
-    micro
-    mpv
-    nextcloud-client
-    lxqt.pavucontrol-qt
-    pinentry
-    rbw
-    ripgrep
     rustup
-    starship
-    tealdeer
-    tela-circle-icon-theme
-    virt-viewer
-    waypipe
-    whois
-    yt-dlp
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

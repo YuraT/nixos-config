@@ -54,8 +54,8 @@ in
     };
     # alias for nix shell with flake packages
     functions.add.body = ''
-      set -x packages 'nixpkgs#'(string join ' nixpkgs#' $argv)
-      nix shell $packages --command fish
+      set -x packages 'nixpkgs#'$argv
+      nix shell $packages
     '';
     interactiveShellInit = ''
       fastfetch
