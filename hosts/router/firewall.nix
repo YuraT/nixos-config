@@ -1,9 +1,6 @@
 { config, lib, pkgs, ... }:
 let
   vars = import ./vars.nix;
-  domain = vars.domain;
-  ldomain = vars.ldomain;
-  sysdomain = vars.sysdomain;
   links = vars.links;
   ifs = vars.ifs;
   pdFromWan = vars.pdFromWan;
@@ -49,7 +46,7 @@ in
           # Drop router adverts from self
           # peculiarity due to wan and lan20 being bridged
           # TODO: figure out a less jank way to do this
-          iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} icmpv6 type nd-router-advert log drop
+          iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} icmpv6 type nd-router-advert log prefix "self icmpv6: " drop
           # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} log drop
           # iifname $ZONE_LAN_IFS ip6 saddr ${links.wanLL} log drop
 
@@ -67,8 +64,10 @@ in
           # Allow all traffic from loopback interface
           iif lo accept
 
-          # Allow DHCPv6 client traffic
-          ip6 daddr { fe80::/10, ff02::/16 } th dport dhcpv6-server accept
+          # Allow DHCPv6 traffic
+          # I thought dhcpv6-client traffic would be accepted by established/related,
+          # but apparently not.
+          ip6 daddr { fe80::/10, ff02::/16 } th dport { dhcpv6-client, dhcpv6-server } accept
 
           # WAN zone input rules
           iifname $ZONE_WAN_IFS jump zone_wan_input
@@ -77,7 +76,7 @@ in
           iifname $ZONE_LAN_IFS jump zone_lan_input
           ip6 saddr $OPNSENSE_P6 jump zone_lan_input
 
-          log
+          # log
       }
 
       chain forward {

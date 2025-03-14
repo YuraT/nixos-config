@@ -54,6 +54,7 @@ in
   networking.dhcpcd.enable = true;
   networking.dhcpcd.allowInterfaces = [ ifs.wan.name ];
   networking.dhcpcd.extraConfig = ''
+    debug
     nohook resolv.conf, yp, hostname, ntp
 
     interface ${ifs.wan.name}
@@ -67,7 +68,7 @@ in
       duid
       ipv6rs
       dhcp6
-      option rapid_commit
+      # option rapid_commit
 
       # DHCPv6 addr
       ia_na
