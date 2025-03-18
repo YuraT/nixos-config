@@ -59,13 +59,6 @@ in
 
     interface ${ifs.wan.name}
       ipv6only
-      # IPv4 (Static)
-      # nodhcp
-      # noipv4ll
-      # static ip_address=${ifs.wan.addr4Sized}
-      # static routers=${ifs.wan.gw4}
-
-      # IPv6
       duid
       ipv6rs
       dhcp6
@@ -128,11 +121,6 @@ in
     networks = {
       "10-wan" = {
         matchConfig.Name = ifs.wan.name;
-
-#        linkConfig = {
-#          Unmanaged = true;
-#          RequiredForOnline = "routable";
-#        };
         # make routing on this interface a dependency for network-online.target
         linkConfig.RequiredForOnline = "routable";
         networkConfig = {
@@ -142,6 +130,7 @@ in
           # let dhcpcd handle this
           Address = [ ifs.wan.addr4Sized ];
           IPv6AcceptRA = false;
+          KeepConfiguration = true;
         };
         routes = [
           { Gateway = ifs.wan.gw4; }

@@ -20,7 +20,11 @@ in
           ${ifs.lan40.name},
           ${ifs.lan50.name},
       }
-      define OPNSENSE_P6 = ${pdFromWan}d::/64
+      define OPNSENSE_NET6 = ${pdFromWan}d::/64
+      define ZONE_LAN_EXTRA_NET6 = {
+          ${ifs.lan20.net6},  # needed since packets can come in from wan on these addrs
+          $OPNSENSE_NET6,
+      }
       define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
 
       define ALLOWED_TCP_PORTS = { ssh, https }
@@ -46,7 +50,9 @@ in
           # Drop router adverts from self
           # peculiarity due to wan and lan20 being bridged
           # TODO: figure out a less jank way to do this
-          iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} icmpv6 type nd-router-advert log prefix "self icmpv6: " drop
+          iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} icmpv6 type nd-router-advert log prefix "self radvt: " drop
+          # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} ip6 nexthdr icmpv6 log prefix "self icmpv6: " drop
+          # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} log prefix "self llv6: " drop
           # iifname $ZONE_WAN_IFS ip6 saddr ${links.lanLL} log drop
           # iifname $ZONE_LAN_IFS ip6 saddr ${links.wanLL} log drop
 
@@ -74,7 +80,7 @@ in
           # LAN zone input rules
           iifname $ZONE_LAN_IFS accept
           iifname $ZONE_LAN_IFS jump zone_lan_input
-          ip6 saddr $OPNSENSE_P6 jump zone_lan_input
+          ip6 saddr $ZONE_LAN_EXTRA_NET6 jump zone_lan_input
 
           # log
       }
@@ -89,7 +95,7 @@ in
           iifname $ZONE_WAN_IFS jump zone_wan_forward
           # LAN zone forward rules
           iifname $ZONE_LAN_IFS jump zone_lan_forward
-          ip6 saddr $OPNSENSE_P6 jump zone_lan_forward
+          ip6 saddr $ZONE_LAN_EXTRA_NET6 jump zone_lan_forward
       }
 
       chain zone_wan_input {
