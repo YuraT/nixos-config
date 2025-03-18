@@ -58,11 +58,12 @@ in
     nohook resolv.conf, yp, hostname, ntp
 
     interface ${ifs.wan.name}
+      ipv6only
       # IPv4 (Static)
-      nodhcp
-      noipv4ll
-      static ip_address=${ifs.wan.addr4Sized}
-      static routers=${ifs.wan.gw4}
+      # nodhcp
+      # noipv4ll
+      # static ip_address=${ifs.wan.addr4Sized}
+      # static routers=${ifs.wan.gw4}
 
       # IPv6
       duid
@@ -127,10 +128,24 @@ in
     networks = {
       "10-wan" = {
         matchConfig.Name = ifs.wan.name;
-        linkConfig = {
-          Unmanaged = true;
-          RequiredForOnline = "routable";
+
+#        linkConfig = {
+#          Unmanaged = true;
+#          RequiredForOnline = "routable";
+#        };
+        # make routing on this interface a dependency for network-online.target
+        linkConfig.RequiredForOnline = "routable";
+        networkConfig = {
+          # start a DHCP Client for IPv4 Addressing/Routing
+          # DHCP = "ipv4";
+          # accept Router Advertisements for Stateless IPv6 Autoconfiguraton (SLAAC)
+          # let dhcpcd handle this
+          Address = [ ifs.wan.addr4Sized ];
+          IPv6AcceptRA = false;
         };
+        routes = [
+          { Gateway = ifs.wan.gw4; }
+        ];
       };
       "20-lan" = (mkLanConfig ifs.lan) // {
         vlan = [
