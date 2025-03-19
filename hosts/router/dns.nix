@@ -46,7 +46,11 @@ in
     dns = {
       bootstrap_dns = [ "1.1.1.1" "9.9.9.9" ];
       upstream_dns = [
-        "quic://p0.freedns.controld.com"  # Default upstream
+        # Default upstreams
+        "quic://p0.freedns.controld.com"
+        "tls://one.one.one.one"
+        "tls://dns.quad9.net"
+
         "[/${ldomain}/][::1]:1053"        # Local domains to Knot (ddns)
         "[/home/][${ifs.lan.ulaPrefix}::250]"  # .home domains to opnsense (temporary)
       ];
@@ -55,10 +59,13 @@ in
     user_rules = [
       # DNS rewrites
       "|grouter.${domain}^$dnsrewrite=${ifs.lan.ulaAddr}"
-      "|pve-1.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.5"
+      "|pve-1.${sysdomain}^$dnsrewrite=${vars.hosts.lan.pve-1.addr4}"
       "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.7"
-      "|pve-1.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::5:1"
+      "|pve-1.${sysdomain}^$dnsrewrite=${vars.hosts.lan.pve-1.ulaAddr}"
       "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::7:1"
+      # This double cname thing doesn't work btw, TODO: remove
+      "|debbi.${sysdomain}^$dnsrewrite=debbi.4.${ifs.lan.domain}"
+      "|debbi.${sysdomain}^$dnsrewrite=debbi.6.${ifs.lan.domain}"
 
       "||lab.${domain}^$dnsrewrite=${ifs.lan.p6}::12:1"
       "||lab.${domain}^$dnsrewrite=${ifs.lan.p4}.12"

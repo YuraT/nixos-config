@@ -95,4 +95,13 @@ rec {
       ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
     };
   };
+
+  hosts = {
+    lan = {
+      pve-1 = {
+        addr4 = "${ifs.lan.p4}.5";
+        ulaAddr = "${ifs.lan.ulaPrefix}::5:1";
+      };
+    };
+  };
 }
