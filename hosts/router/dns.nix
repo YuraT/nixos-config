@@ -51,6 +51,10 @@ in
         "tls://one.one.one.one"
         "tls://dns.quad9.net"
 
+        # Adguard uses upstream and not rewrite rules to resolve cname rewrites,
+        # and obviously my sysdomain entries don't exist in cloudflare.
+        "[/${sysdomain}/][::1]"           # Sys domains to self (for cname rewrites)
+
         "[/${ldomain}/][::1]:1053"        # Local domains to Knot (ddns)
         "[/home/][${ifs.lan.ulaPrefix}::250]"  # .home domains to opnsense (temporary)
       ];
@@ -63,26 +67,27 @@ in
       "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.7"
       "|pve-1.${sysdomain}^$dnsrewrite=${vars.hosts.lan.pve-1.ulaAddr}"
       "|pve-3.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::7:1"
-      # This double cname thing doesn't work btw, TODO: remove
-      "|debbi.${sysdomain}^$dnsrewrite=debbi.4.${ifs.lan.domain}"
-      "|debbi.${sysdomain}^$dnsrewrite=debbi.6.${ifs.lan.domain}"
+      "|truenas.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.10"
+      "|truenas.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::20d0:43ff:fec6:3192"
+      "|debbi.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.11"
+      "|debbi.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::11:1"
+      "|etappi.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.12"
+      "|etappi.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::12:1"
 
-      "||lab.${domain}^$dnsrewrite=${ifs.lan.p6}::12:1"
-      "||lab.${domain}^$dnsrewrite=${ifs.lan.p4}.12"
+      # Lab DNS rewrites
+      "||lab.${domain}^$dnsrewrite=etappi.${sysdomain}"
 
       # Allowed exceptions
       "@@||googleads.g.doubleclick.net"
     ]
       # Alpina DNS rewrites
-      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p6}:1cd5:56ff:feec:c74a") alpinaDomains
-      ++ map (host: "${host}${domain}^$dnsrewrite=${ifs.lan.p4}.11") alpinaDomains;
+      ++ map (host: "${host}${domain}^$dnsrewrite=debbi.${sysdomain}") alpinaDomains;
   };
 
   services.knot.enable = true;
   services.knot.settings = {
     # server.listen = "0.0.0.0@1053";
     server.listen = "::1@1053";
-    # TODO: templates
     zone = [
       {
         domain = ldomain;
