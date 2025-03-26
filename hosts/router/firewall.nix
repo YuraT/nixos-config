@@ -26,6 +26,17 @@ in
           $OPNSENSE_NET6,
       }
       define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
+      define CLOUDFLARE_NET6 = {
+          # https://www.cloudflare.com/ips-v6
+          # TODO: figure out a better way to get addrs dynamically from url
+          2400:cb00::/32,
+          2606:4700::/32,
+          2803:f800::/32,
+          2405:b500::/32,
+          2405:8100::/32,
+          2a06:98c0::/29,
+          2c0f:f248::/32,
+      }
 
       define ALLOWED_TCP_PORTS = { ssh, https }
       define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain }
@@ -38,9 +49,12 @@ in
       }
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
+          # elements = {}
+      }
+      set cloudflare_forward_v6 {
+          type ipv6_addr
           elements = {
-              tcp . ${ifs.lan.p6}::11:1 . https,
-              tcp . ${ifs.lan.p6}:1cd5:56ff:feec:c74a . https,
+              ${ifs.lan.p6}::11:1,
           }
       }
 
@@ -109,6 +123,9 @@ in
 
           # Allowed IPv6 ports
           meta l4proto . ip6 daddr . th dport @port_forward_v6 accept
+
+          # Allowed IPv6 from cloudflare
+          ip6 saddr $CLOUDFLARE_NET6 ip6 daddr @cloudflare_forward_v6 accept
       }
 
       chain zone_lan_input {
