@@ -46,6 +46,12 @@ let
   };
 in
 {
+  # By default, Linux will respond to ARP requests that belong to other interfaces.
+  # Normally this isn't a problem, but it causes issues
+  # since my WAN and LAN20 are technically bridged.
+  # https://networkengineering.stackexchange.com/questions/83071/why-linux-answers-arp-requests-for-ips-that-belong-to-different-network-interfac
+  boot.kernel.sysctl."net.ipv4.conf.default.arp_filter" = 1;
+
   # It is impossible to do multiple prefix requests with networkd,
   # so I use dhcpcd for this
   # https://github.com/systemd/systemd/issues/22571
