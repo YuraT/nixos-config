@@ -32,7 +32,7 @@
 
   boot.loader.timeout = 3;
   boot.loader.systemd-boot.configurationLimit = 5;
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_13;
 
   # https://nixos.wiki/wiki/Accelerated_Video_Playback
   hardware.graphics = {
@@ -125,6 +125,7 @@
 
       # Nix
       nixd
+      nil
 
       # Gleam
       gleam
@@ -159,7 +160,7 @@
 
   # https://discourse.nixos.org/t/firefox-does-not-use-kde-window-decorations-and-cursor/32132/3
   # programs.dconf.enable = true;
-  # programs.firefox = {                  
+  # programs.firefox = {
     # enable = true;
     # preferences = {
       # "widget.use-xdg-desktop-portal.file-picker" = 1;
@@ -178,9 +179,9 @@
 
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = with pkgs; [
-    # Add any missing dynamic libraries for unpackaged 
+    # Add any missing dynamic libraries for unpackaged
     # programs here, NOT in environment.systemPackages
-    
+
     # For JetBrains stuff
     # https://github.com/NixOS/nixpkgs/issues/240444
   ];
@@ -207,7 +208,7 @@
    ];
   # fonts.fontDir.enable = true;
   # fonts.fontconfig.allowBitmaps = false;
-  
+
   environment.systemPackages = with pkgs; [
     dust
     eza
@@ -237,12 +238,14 @@
     whois
     yt-dlp
   ] ++ [
+    bitwarden-desktop
     darkman
     host-spawn # for flatpaks
     kdePackages.filelight
     kdePackages.flatpak-kcm
     kdePackages.kate
     kdePackages.yakuake
+    # TODO: remove (replace by bitwarden-desktop)
     gcr
     gnome-keyring # config for this and some others
     mpv
@@ -261,6 +264,7 @@
     jetbrains.webstorm
     android-studio
     rustup
+    zed-editor
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

@@ -19,6 +19,7 @@ in
     SHELL = "fish";
   };
 
+  # TODO: remove (replace by bitwarden-desktop)
   services.gnome-keyring = {
     enable = true;
     components = [ "pkcs11" "ssh" ];
@@ -48,7 +49,7 @@ in
       ll = "exa -l --color=always --group-directories-first --icons";  # long format
       lt = "exa -aT --color=always --group-directories-first --icons"; # tree listing
       "l." = "exa -a | rg '^\.'";                                      # show only dotfiles
-      
+
       # Replace cat with bat
       cat = "bat";
     };
@@ -161,6 +162,7 @@ in
         shellExpand = true;
       };
       dolphinrc.General.ShowFullPath = true;
+      dolphinrc.DetailsMode.PreviewSize.persistent = true;
       kactivitymanagerdrc = {
         activities."809dc779-bf5b-49e6-8e3f-cbe283cb05b6" = "Default";
         activities."b34a506d-ac4f-4797-8c08-6ef45bc49341" = "Fun";

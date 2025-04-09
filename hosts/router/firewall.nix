@@ -29,6 +29,7 @@ in
       define CLOUDFLARE_NET6 = {
           # https://www.cloudflare.com/ips-v6
           # TODO: figure out a better way to get addrs dynamically from url
+          # perhaps building a nixos module/package that fetches the ips?
           2400:cb00::/32,
           2606:4700::/32,
           2803:f800::/32,
