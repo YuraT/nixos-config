@@ -20,8 +20,9 @@ in
           ${ifs.lan40.name},
           ${ifs.lan50.name},
       }
-      define OPNSENSE_NET6 = ${pdFromWan}d::/64
+      define OPNSENSE_NET6 = ${vars.extra.opnsense.net6}
       define ZONE_LAN_EXTRA_NET6 = {
+          # TODO: reevaluate this statement
           ${ifs.lan20.net6},  # needed since packets can come in from wan on these addrs
           $OPNSENSE_NET6,
       }

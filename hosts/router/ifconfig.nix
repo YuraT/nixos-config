@@ -150,6 +150,7 @@ in
           ifs.lan40.name
           ifs.lan50.name
         ];
+        routes = vars.extra.opnsense.routes;
       };
       "30-vlan10" = mkLanConfig ifs.lan10;
       "30-vlan20" = mkLanConfig ifs.lan20;

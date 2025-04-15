@@ -95,4 +95,28 @@ rec {
       ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
     };
   };
+
+  extra = {
+    opnsense = rec {
+      addr4 = "${ifs.lan.p4}.250";
+      ulaAddr = "${ifs.lan.ulaPrefix}::250";
+      p6 = "${pdFromWan}d";
+      net6 = "${p6}::/64";
+      # VPN routes on opnsense
+      routes = [
+        {
+          Destination = "10.6.0.0/24";
+          Gateway = addr4;
+        }
+        {
+          Destination = "10.18.0.0/20";
+          Gateway = addr4;
+        }
+        {
+          Destination = net6;
+          Gateway = ulaAddr;
+        }
+      ];
+    };
+  };
 }
