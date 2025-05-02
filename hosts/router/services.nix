@@ -4,6 +4,9 @@ let
   domain = vars.domain;
 in
 {
+  # vnStat for tracking network interface stats
+  services.vnstat.enable = true;
+
   # https://wiki.nixos.org/wiki/Prometheus
   services.prometheus = {
     enable = true;
