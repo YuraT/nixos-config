@@ -47,6 +47,8 @@ in
     };
   };
 
+  secrix.system.secrets.cf-api-key.encrypted.file = ../../secrets/cf_api_key.age;
+  systemd.services.caddy.serviceConfig.EnvironmentFile = config.secrix.system.secrets.cf-api-key.decrypted.path;
   services.caddy = {
     enable = true;
     package = pkgs.caddy.withPlugins {
@@ -55,7 +57,7 @@ in
     };
     virtualHosts."grouter.${domain}".extraConfig = ''
       tls {
-          dns cloudflare xx
+          dns cloudflare {env.CF_API_KEY}
           resolvers 1.1.1.1
       }
       @grafana path /grafana /grafana/*

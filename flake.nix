@@ -18,9 +18,15 @@
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    secrix = {
+      url = "github:Platonic-Systems/secrix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators }: {
+  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators, secrix }: {
+    apps.x86_64-linux.secrix = secrix.secrix self;
+
     nixosConfigurations = {
       Yura-PC = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -52,6 +58,7 @@
       router = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
+          secrix.nixosModules.default
           ./modules
           ./hosts/common.nix
           ./hosts/router

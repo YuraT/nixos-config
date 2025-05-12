@@ -1,5 +1,7 @@
 { config, lib, pkgs, ... }:
-
+let
+  vars = import ./vars.nix;
+in
 {
   imports =
     [ # Include the results of the hardware scan.
@@ -10,6 +12,8 @@
       ./kea.nix
       ./services.nix
     ];
+  # Secrix for secrets management
+  secrix.hostPubKey = vars.pubkey;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;

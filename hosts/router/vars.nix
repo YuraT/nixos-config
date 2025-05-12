@@ -31,6 +31,7 @@ let
     };
 in
 rec {
+  pubkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFobB87yYVwhuYrA+tfztLuks3s9jZOqEFktwGw1mo83 root@grouter";
   domain = "cazzzer.com";
   ldomain = "l.${domain}";
   sysdomain = "sys.${domain}";
