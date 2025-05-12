@@ -4,54 +4,96 @@ let
   links = vars.links;
   ifs = vars.ifs;
   pdFromWan = vars.pdFromWan;
+  nftIdentifiers = ''
+    define ZONE_WAN_IFS = { ${ifs.wan.name} }
+    define ZONE_LAN_IFS = {
+        ${ifs.lan.name},
+        ${ifs.lan10.name},
+        ${ifs.lan20.name},
+        ${ifs.lan30.name},
+        ${ifs.lan40.name},
+        ${ifs.lan50.name},
+    }
+    define OPNSENSE_NET6 = ${vars.extra.opnsense.net6}
+    define ZONE_LAN_EXTRA_NET6 = {
+        # TODO: reevaluate this statement
+        ${ifs.lan20.net6},  # needed since packets can come in from wan on these addrs
+        $OPNSENSE_NET6,
+    }
+    define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
+    define CLOUDFLARE_NET6 = {
+        # https://www.cloudflare.com/ips-v6
+        # TODO: figure out a better way to get addrs dynamically from url
+        # perhaps building a nixos module/package that fetches the ips?
+        2400:cb00::/32,
+        2606:4700::/32,
+        2803:f800::/32,
+        2405:b500::/32,
+        2405:8100::/32,
+        2a06:98c0::/29,
+        2c0f:f248::/32,
+    }
+  '';
 in
 {
   networking.firewall.enable = false;
   networking.nftables.enable = true;
-  networking.nftables.tables.firewall = {
-    family = "inet";
+  # networking.nftables.ruleset = nftIdentifiers; #doesn't work because it's appended to the end
+  networking.nftables.tables.nat4 = {
+    family = "ip";
     content = ''
-      define ZONE_WAN_IFS = { ${ifs.wan.name} }
-      define ZONE_LAN_IFS = {
-          ${ifs.lan.name},
-          ${ifs.lan10.name},
-          ${ifs.lan20.name},
-          ${ifs.lan30.name},
-          ${ifs.lan40.name},
-          ${ifs.lan50.name},
-      }
-      define OPNSENSE_NET6 = ${vars.extra.opnsense.net6}
-      define ZONE_LAN_EXTRA_NET6 = {
-          # TODO: reevaluate this statement
-          ${ifs.lan20.net6},  # needed since packets can come in from wan on these addrs
-          $OPNSENSE_NET6,
-      }
-      define RFC1918 = { 10.0.0.0/8, 172.12.0.0/12, 192.168.0.0/16 }
-      define CLOUDFLARE_NET6 = {
-          # https://www.cloudflare.com/ips-v6
-          # TODO: figure out a better way to get addrs dynamically from url
-          # perhaps building a nixos module/package that fetches the ips?
-          2400:cb00::/32,
-          2606:4700::/32,
-          2803:f800::/32,
-          2405:b500::/32,
-          2405:8100::/32,
-          2a06:98c0::/29,
-          2c0f:f248::/32,
-      }
-
-      define ALLOWED_TCP_PORTS = { ssh, https }
-      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain }
-
-      map port_forward_v4 {
+      ${nftIdentifiers}
+      map port_forward {
           type inet_proto . inet_service : ipv4_addr . inet_service
           elements = {
               tcp . 8006 : ${ifs.lan50.p4}.10 . 8006
           }
       }
+
+      chain prerouting {
+          # Initial step, accept by default
+          type nat hook prerouting priority dstnat; policy accept;
+
+          # Port forwarding
+          fib daddr type local dnat ip to meta l4proto . th dport map @port_forward
+      }
+
+      chain postrouting {
+          # Last step, accept by default
+          type nat hook postrouting priority srcnat; policy accept;
+
+          # Masquerade LAN addrs
+          oifname $ZONE_WAN_IFS ip saddr $RFC1918 masquerade
+      }
+    '';
+  };
+
+  # Optional IPv6 masquerading (big L if enabled, don't forget to allow forwarding)
+  networking.nftables.tables.nat6 = {
+    family = "ip6";
+    enable = false;
+    content = ''
+      ${nftIdentifiers}
+      chain postrouting {
+          type nat hook postrouting priority srcnat; policy accept;
+          oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 masquerade
+      }
+    '';
+  };
+
+  networking.nftables.tables.firewall = {
+    family = "inet";
+    content = ''
+      ${nftIdentifiers}
+      define ALLOWED_TCP_PORTS = { ssh, https }
+      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain }
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
-          # elements = {}
+          elements = {
+              # syncthing on alpina
+              tcp . ${ifs.lan.p6}::11:1 . 22000 ,
+              udp . ${ifs.lan.p6}::11:1 . 22000 ,
+          }
       }
       set cloudflare_forward_v6 {
           type ipv6_addr
@@ -94,7 +136,7 @@ in
           # WAN zone input rules
           iifname $ZONE_WAN_IFS jump zone_wan_input
           # LAN zone input rules
-          iifname $ZONE_LAN_IFS accept
+          # iifname $ZONE_LAN_IFS accept
           iifname $ZONE_LAN_IFS jump zone_lan_input
           ip6 saddr $ZONE_LAN_EXTRA_NET6 jump zone_lan_input
 
@@ -159,25 +201,6 @@ in
           type filter hook output priority filter; policy accept;
           # NAT reflection
           # oif lo ip daddr != 127.0.0.0/8 dnat ip to meta l4proto . th dport map @port_forward_v4
-      }
-
-      chain prerouting {
-          # Initial step, accept by default
-          type nat hook prerouting priority dstnat; policy accept;
-
-          # Port forwarding
-          fib daddr type local dnat ip to meta l4proto . th dport map @port_forward_v4
-      }
-
-      chain postrouting {
-          # Last step, accept by default
-          type nat hook postrouting priority srcnat; policy accept;
-
-          # Masquerade LAN addrs
-          oifname $ZONE_WAN_IFS ip saddr $RFC1918 masquerade
-
-          # Optional IPv6 masquerading (big L if enabled, don't forget to allow forwarding)
-          # oifname $ZONE_WAN_IFS ip6 saddr fd00::/8 masquerade
       }
     '';
   };
