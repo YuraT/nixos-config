@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 let
   vars = import ./vars.nix;
+  enableDesktop = false;
 in
 {
   imports =
@@ -35,10 +36,10 @@ in
 
   # Enable the KDE Plasma Desktop Environment.
   # Useful for debugging with wireshark.
-  # services.displayManager.sddm.enable = true;
   hardware.graphics.enable = true;
-  services.displayManager.sddm.wayland.enable = true;
-  services.desktopManager.plasma6.enable = true;
+  services.displayManager.sddm.enable = enableDesktop;
+  services.displayManager.sddm.wayland.enable = enableDesktop;
+  services.desktopManager.plasma6.enable = enableDesktop;
   # No need for audio in VM
   services.pipewire.enable = false;
 
@@ -83,9 +84,7 @@ in
     eza
     fastfetch
     fd
-    kdePackages.filelight
     kdePackages.kate
-    kdePackages.yakuake
     ldns
     lsof
     micro
