@@ -86,7 +86,7 @@ in
     content = ''
       ${nftIdentifiers}
       define ALLOWED_TCP_PORTS = { ssh, https }
-      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain }
+      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain, https }
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {

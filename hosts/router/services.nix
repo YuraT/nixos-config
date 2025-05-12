@@ -56,6 +56,7 @@ in
       hash = "sha256-saKJatiBZ4775IV2C5JLOmZ4BwHKFtRZan94aS5pO90=";
     };
     virtualHosts."grouter.${domain}".extraConfig = ''
+      encode
       tls {
           dns cloudflare {env.CF_API_KEY}
           resolvers 1.1.1.1
