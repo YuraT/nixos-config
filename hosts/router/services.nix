@@ -49,8 +49,15 @@ in
 
   services.caddy = {
     enable = true;
+    package = pkgs.caddy.withPlugins {
+      plugins = [ "github.com/caddy-dns/cloudflare@v0.2.1" ];
+      hash = "sha256-saKJatiBZ4775IV2C5JLOmZ4BwHKFtRZan94aS5pO90=";
+    };
     virtualHosts."grouter.${domain}".extraConfig = ''
-      tls internal
+      tls {
+          dns cloudflare xx
+          resolvers 1.1.1.1
+      }
       @grafana path /grafana /grafana/*
       handle @grafana {
           reverse_proxy localhost:${toString config.services.grafana.settings.server.http_port}
