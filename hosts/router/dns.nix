@@ -42,8 +42,12 @@ in
 
   services.adguardhome.enable = true;
   services.adguardhome.mutableSettings = false;
+  # https://github.com/AdguardTeam/Adguardhome/wiki/Configuration
   services.adguardhome.settings = {
     dns = {
+      # Disable rate limit, default of 20 is too low
+      # https://github.com/AdguardTeam/AdGuardHome/issues/6726
+      ratelimit = 0;
       bootstrap_dns = [ "1.1.1.1" "9.9.9.9" ];
       upstream_dns = [
         # Default upstreams
