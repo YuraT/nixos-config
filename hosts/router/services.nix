@@ -4,6 +4,7 @@ let
   domain = vars.domain;
 in
 {
+
   # vnStat for tracking network interface stats
   services.vnstat.enable = true;
 
@@ -30,10 +31,14 @@ in
   # https://wiki.nixos.org/wiki/Grafana#Declarative_configuration
   services.grafana = {
     enable = true;
-    settings.server = {
-      http_port = 3001;
-      serve_from_sub_path = true;
-      root_url = "%(protocol)s://%(domain)s:%(http_port)s/grafana/";
+    settings = {
+      security.allow_embedding = true;
+      server = {
+        http_port = 3001;
+        domain = "grouter.${domain}";
+        root_url = "https://%(domain)s/grafana/";
+        serve_from_sub_path = true;
+      };
     };
     provision = {
       enable = true;
@@ -71,6 +76,9 @@ in
           basic_auth {
               Bob $2a$14$HsWmmzQTN68K3vwiRAfiUuqIjKoXEXaj9TOLUtG2mO1vFpdovmyBy
           }
+      }
+      handle /* {
+          reverse_proxy localhost:${toString config.services.glance.settings.server.port}
       }
     '';
   };

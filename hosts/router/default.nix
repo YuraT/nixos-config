@@ -11,6 +11,7 @@ in
       ./firewall.nix
       ./dns.nix
       ./kea.nix
+      ./glance.nix
       ./services.nix
     ];
   # Secrix for secrets management
