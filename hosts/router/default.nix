@@ -72,10 +72,12 @@ in
     lsof
     micro
     mpv
+    openssl
     ripgrep
     rustscan
     starship
     tealdeer
+    transcrypt
     waypipe
     whois
   ];

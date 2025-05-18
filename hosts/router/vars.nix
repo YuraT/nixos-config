@@ -1,4 +1,6 @@
 let
+  private = import ./private.nix;
+
   mkIfConfig = {
     name_,
     domain_,
@@ -43,7 +45,7 @@ rec {
   };
 
   p4 = "10.17";                      # .0.0/16
-  pdFromWan = "";  # ::/60
+  pdFromWan = private.pdFromWan;  # ::/60
   ulaPrefix = "fdab:07d3:581d";      # ::/48
   ifs = rec {
     wan = rec {

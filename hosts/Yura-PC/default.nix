@@ -177,6 +177,7 @@
     fd
     helix
     micro
+    openssl
     ripgrep
     starship
     tealdeer

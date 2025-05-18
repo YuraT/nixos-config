@@ -95,9 +95,11 @@
     ldns
     micro
     mpv
+    openssl
     ripgrep
     starship
     tealdeer
+    transcrypt
     waypipe
     whois
     zfs
