@@ -34,6 +34,7 @@
           ./modules
           ./hosts/common.nix
           ./hosts/Yura-PC
+          ./users/cazzzer
           # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
           home-manager.nixosModules.home-manager
           {
@@ -52,7 +53,9 @@
         modules = [
           ./modules
           ./hosts/common.nix
+          ./hosts/hw-vm.nix
           ./hosts/vm
+          ./users/cazzzer
         ];
       };
       router = nixpkgs.lib.nixosSystem {
@@ -62,6 +65,7 @@
           ./modules
           ./hosts/common.nix
           ./hosts/router
+          ./users/cazzzer
         ];
       };
     };
@@ -72,11 +76,25 @@
         modules = [
           ./modules
           ./hosts/common.nix
-          ./hosts/vm/proxmox.nix
+          ./hosts/hw-proxmox.nix
           ./hosts/vm
+          ./users/cazzzer
         ];
         format = "proxmox";
       };
     };
+    vm-proxmox = let
+      image = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./modules
+          ./hosts/common.nix
+          ./hosts/hw-proxmox.nix
+          ./hosts/vm
+          ./users/cazzzer
+        ];
+      };
+    in
+      image.config.system.build.VMA;
   };
 }

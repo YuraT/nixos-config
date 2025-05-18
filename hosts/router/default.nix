@@ -53,24 +53,6 @@ in
 
   security.sudo.wheelNeedsPassword = false;
 
-  users.groups = {
-    cazzzer = {
-      gid = 1000;
-    };
-  };
-  users.users.cazzzer = {
-    password = "";
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPWgEzbEjbbu96MVQzkiuCrw+UGYAXN4sRe2zM6FVopq cazzzer@Yura-PC"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIApFeLVi3BOquL0Rt+gQK2CutNHaBDQ0m4PcGWf9Bc43 cazzzer@Yura-TPX13"
-    ];
-    isNormalUser = true;
-    description = "Yura";
-    uid = 1000;
-    group = "cazzzer";
-    extraGroups = [ "wheel" "wireshark" ];
-  };
-
   programs.firefox.enable = true;
   programs.fish.enable = true;
   programs.git.enable = true;

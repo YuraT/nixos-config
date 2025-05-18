@@ -1,15 +1,12 @@
 { config, lib, pkgs, ... }:
 let
-  defaultFont = {
-    family = "Noto Sans";
-    pointSize = 14;
-  };
+  username = "cazzzer";
 in
 {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
-  home.username = "cazzzer";
-  home.homeDirectory = "/home/cazzzer";
+  home.username = username;
+  home.homeDirectory = "/home/${username}";
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
@@ -126,8 +123,15 @@ in
   programs.plasma = {
     enable = true;
     overrideConfig = true;
+    # TODO: figure out how to enable tela-circle icon theme if installed in systemPackages
+    # workspace.iconTheme = if builtins.elem pkgs.tela-circle-icon-theme config.environment.systemPackages then "Tela-circle" else null;
     workspace.iconTheme = "Tela-circle";
-    fonts = {
+    fonts = let
+      defaultFont = {
+        family = "Noto Sans";
+        pointSize = 14;
+      };
+    in {
       general = defaultFont;
       fixedWidth = defaultFont // { family = "Hack"; };
       small = defaultFont // { pointSize = defaultFont.pointSize - 2; };

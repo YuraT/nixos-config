@@ -7,7 +7,7 @@
 {
   imports =
     [ # Include the results of the hardware scan.
-#      ./hardware-configuration-vm.nix
+      # ./hardware-configuration.nix
     ];
   mods.kb-input.enable = false;
 
@@ -47,8 +47,8 @@
   services.flatpak.enable = true;
 
   # VM services
-  services.cloud-init.enable = true;
-#  services.cloud-init.network.enable = false;
+  # services.cloud-init.enable = false;
+  # services.cloud-init.network.enable = false;
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
   services.openssh.enable = true;
@@ -56,24 +56,6 @@
   services.openssh.settings.KbdInteractiveAuthentication = false;
 
   security.sudo.wheelNeedsPassword = false;
-
-  users.groups = {
-    cazzzer = {
-      gid = 1000;
-    };
-  };
-  users.users.cazzzer = {
-    password = "";
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPWgEzbEjbbu96MVQzkiuCrw+UGYAXN4sRe2zM6FVopq cazzzer@Yura-PC"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIApFeLVi3BOquL0Rt+gQK2CutNHaBDQ0m4PcGWf9Bc43 cazzzer@Yura-TPX13"
-    ];
-    isNormalUser = true;
-    description = "Yura";
-    uid = 1000;
-    group = "cazzzer";
-    extraGroups = [ "wheel" "docker" "wireshark" ];
-  };
 
   # Install firefox.
   programs.firefox.enable = true;

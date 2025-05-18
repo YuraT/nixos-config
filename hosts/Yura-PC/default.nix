@@ -88,7 +88,7 @@
   services.openssh.enable = true;
   services.flatpak.enable = true;
   # services.geoclue2.enable = true;
-  location.provider = "geoclue2";
+  # location.provider = "geoclue2";
   # services.gnome.gnome-keyring.enable = true;
   security.pam.services.sddm.enableGnomeKeyring = true;
   # security.pam.services.sddm.gnupg.enable = true;
@@ -96,42 +96,6 @@
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
-
-  # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.groups = {
-    cazzzer = {
-      gid = 1000;
-    };
-  };
-  users.users.cazzzer = {
-    isNormalUser = true;
-    description = "Yura";
-    uid = 1000;
-    group = "cazzzer";
-    extraGroups = [ "networkmanager" "wheel" "docker" "wireshark" "geoclue" ];
-    packages = with pkgs; [
-      # Python
-      python3
-      poetry
-
-      # Haskell
-      haskellPackages.ghc
-      haskellPackages.stack
-
-      # Node
-      nodejs_22
-      pnpm
-      bun
-
-      # Nix
-      nixd
-      nil
-
-      # Gleam
-      gleam
-      beamMinimal26Packages.erlang
-    ];
-  };
 
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = false;
@@ -167,9 +131,6 @@
       # "widget.use-xdg-desktop-portal.mime-handler" = 1;
     # };
   # };
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
@@ -219,6 +180,7 @@
     ripgrep
     starship
     tealdeer
+    transcrypt
   ] ++ [
     efibootmgr
     ffmpeg
