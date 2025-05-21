@@ -85,8 +85,10 @@ in
     family = "inet";
     content = ''
       ${nftIdentifiers}
-      define ALLOWED_TCP_PORTS = { ssh, https }
-      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain, https }
+      define ALLOWED_TCP_WAN_PORTS = { ssh }
+      define ALLOWED_UDP_WAN_PORTS = { 18596 }
+      define ALLOWED_TCP_LAN_PORTS = { ssh, https }
+      define ALLOWED_UDP_LAN_PORTS = { bootps, dhcpv6-server, domain, https, 18596 }
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {
@@ -157,8 +159,9 @@ in
       }
 
       chain zone_wan_input {
-          # Allow SSH from WAN (if needed)
-          tcp dport ssh accept
+          # Allow specific services from WAN
+          tcp dport $ALLOWED_TCP_WAN_PORTS accept
+          udp dport $ALLOWED_UDP_WAN_PORTS accept
       }
 
       chain zone_wan_forward {
@@ -180,8 +183,8 @@ in
           ip protocol icmp accept
 
           # Allow specific services from LAN
-          tcp dport $ALLOWED_TCP_PORTS accept
-          udp dport $ALLOWED_UDP_PORTS accept
+          tcp dport $ALLOWED_TCP_LAN_PORTS accept
+          udp dport $ALLOWED_UDP_LAN_PORTS accept
       }
 
       chain zone_lan_forward {
