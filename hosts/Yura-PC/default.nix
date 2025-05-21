@@ -32,7 +32,7 @@
 
   boot.loader.timeout = 3;
   boot.loader.systemd-boot.configurationLimit = 5;
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_13;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_14;
 
   # https://nixos.wiki/wiki/Accelerated_Video_Playback
   hardware.graphics = {
