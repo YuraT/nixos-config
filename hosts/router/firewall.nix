@@ -85,10 +85,10 @@ in
     family = "inet";
     content = ''
       ${nftIdentifiers}
-      define ALLOWED_TCP_WAN_PORTS = { ssh }
-      define ALLOWED_UDP_WAN_PORTS = { 18596 }
+      define ALLOWED_TCP_PORTS = { ssh }
+      define ALLOWED_UDP_PORTS = { 18596 }
       define ALLOWED_TCP_LAN_PORTS = { ssh, https }
-      define ALLOWED_UDP_LAN_PORTS = { bootps, dhcpv6-server, domain, https, 18596 }
+      define ALLOWED_UDP_LAN_PORTS = { bootps, dhcpv6-server, domain, https }
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {
@@ -135,6 +135,10 @@ in
           # but apparently not.
           ip6 daddr { fe80::/10, ff02::/16 } th dport { dhcpv6-client, dhcpv6-server } accept
 
+          # Global input rules
+          tcp dport $ALLOWED_TCP_PORTS accept
+          udp dport $ALLOWED_UDP_PORTS accept
+
           # WAN zone input rules
           iifname $ZONE_WAN_IFS jump zone_wan_input
           # LAN zone input rules
@@ -159,9 +163,7 @@ in
       }
 
       chain zone_wan_input {
-          # Allow specific services from WAN
-          tcp dport $ALLOWED_TCP_WAN_PORTS accept
-          udp dport $ALLOWED_UDP_WAN_PORTS accept
+          # Allow specific stuff from WAN
       }
 
       chain zone_wan_forward {
