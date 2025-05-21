@@ -82,19 +82,19 @@
         ];
         format = "proxmox";
       };
+      vm-proxmox = let
+        image = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./modules
+            ./hosts/common.nix
+            ./hosts/hw-proxmox.nix
+            ./hosts/vm
+            ./users/cazzzer
+          ];
+        };
+      in
+        image.config.system.build.VMA;
     };
-    vm-proxmox = let
-      image = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          ./modules
-          ./hosts/common.nix
-          ./hosts/hw-proxmox.nix
-          ./hosts/vm
-          ./users/cazzzer
-        ];
-      };
-    in
-      image.config.system.build.VMA;
   };
 }
