@@ -8,6 +8,7 @@ in
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./ifconfig.nix
+      ./wireguard.nix
       ./firewall.nix
       ./dns.nix
       ./kea.nix
