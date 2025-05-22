@@ -53,4 +53,15 @@ in
       }]) [] wg0Peers;
     };
   };
+
+  systemd.network.networks = {
+    "10-wg0" = {
+      matchConfig.Name = "wg0";
+      networkConfig = {
+        IPv4Forwarding = true;
+        IPv6SendRA = false;
+        Address = [ "10.6.0.1/24" "${vars.extra.opnsense.p6}::6:0:1/96" ];
+      };
+    };
+  };
 }
