@@ -16,18 +16,19 @@ let
     "AsusS513" = {
       allowedIPs = [ "10.6.0.100/32" ];
       publicKey = "XozJ7dHdJfkLORkCVxaB1VmvHEOAA285kRZcmzfPl38=";
-      pskEnabled = true;
+      pskEnabled = false;
     };
   };
+  peerSecretName = name: "wg0-peer-${name}-psk";
 in
 {
   secrix.services.systemd-networkd.secrets = let
-    peerSecretName = name: "wg0-peer-${name}-psk";
+    pskPeers = lib.attrsets.filterAttrs (name: peer: peer.pskEnabled) wg0Peers;
     mapPeer = name: peer: {
       name = peerSecretName name;
-      value = if peer.pskEnabled then {encrypted.file = ./secrets/wireguard/${peerSecretName name}.age;} else null;
+      value.encrypted.file = ./secrets/wireguard/${peerSecretName name}.age;
     };
-    peerSecrets = lib.attrsets.mapAttrs' mapPeer wg0Peers;
+    peerSecrets = lib.attrsets.mapAttrs' mapPeer pskPeers;
   in
   {
     wg0-private-key.encrypted.file = ./secrets/wireguard/wg0-private-key.age;
@@ -46,11 +47,14 @@ in
         PrivateKeyFile = secrets.wg0-private-key.decrypted.path;
         ListenPort = 18596;
       };
-      wireguardPeers = lib.attrsets.foldlAttrs (name: peer: acc: acc ++ [{
-        AllowedIPs = lib.strings.concatStringsSep "," peer.allowedIPs;
-        PublicKey = peer.publicKey;
-        PresharedKeyFile = if peer.pskEnabled then secrets."wg0-peer-${name}-psk".decrypted.path else null;
-      }]) [] wg0Peers;
+      wireguardPeers = let
+        secrets = config.secrix.services.systemd-networkd.secrets;
+      in
+      map (peer: {
+        AllowedIPs = lib.strings.concatStringsSep "," peer.value.allowedIPs;
+        PublicKey = peer.value.publicKey;
+        PresharedKeyFile = if peer.value.pskEnabled then secrets."${peerSecretName peer.name}".decrypted.path else null;
+      }) (lib.attrsToList wg0Peers);
     };
   };
 
