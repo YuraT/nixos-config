@@ -99,6 +99,18 @@ rec {
     };
   };
 
+  wg = {
+    wg0 = rec {
+      name = "wg0";
+      p4 = "10.18.16";  # .0/24
+      addr4 = "${p4}.1";
+      addr4Sized = "${addr4}/24";
+      p6 = "${pdFromWan}f::6";  # :0:0/96
+      addr6 = "${p6}:0:1";
+      addr6Sized = "${addr6}/96";
+    };
+  };
+
   extra = {
     opnsense = rec {
       addr4 = "${ifs.lan.p4}.250";
