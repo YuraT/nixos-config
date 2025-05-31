@@ -62,6 +62,7 @@
   # services.gnome.gnome-keyring.enable = true;
   security.pam.services.sddm.enableGnomeKeyring = true;
   # security.pam.services.sddm.gnupg.enable = true;
+  services.fprintd.enable = true;
 
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = false;
