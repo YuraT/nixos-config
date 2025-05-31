@@ -48,6 +48,26 @@
           }
         ];
       };
+      Yura-TPX13 = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          ./modules
+          ./hosts/common.nix
+          ./hosts/Yura-TPX13
+          ./users/cazzzer
+          # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.sharedModules = [ plasma-manager.homeManagerModules.plasma-manager ];
+
+            home-manager.users.cazzzer = import ./home;
+            # Optionally, use home-manager.extraSpecialArgs to pass
+            # arguments to home.nix
+          }
+        ];
+      };
       VM = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
