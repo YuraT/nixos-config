@@ -24,7 +24,19 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators, secrix }: {
+  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators, secrix }:
+  let
+    hmModule = file: {
+      home-manager.useGlobalPkgs = true;
+      home-manager.useUserPackages = true;
+      home-manager.sharedModules = [ plasma-manager.homeManagerModules.plasma-manager ];
+
+      home-manager.users.cazzzer = import file;
+      # Optionally, use home-manager.extraSpecialArgs to pass
+      # arguments to home.nix
+    };
+  in
+  {
     apps.x86_64-linux.secrix = secrix.secrix self;
 
     nixosConfigurations = {
@@ -33,19 +45,12 @@
         modules = [
           ./modules
           ./hosts/common.nix
+          ./hosts/common-desktop.nix
           ./hosts/Yura-PC
           ./users/cazzzer
           # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
           home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.sharedModules = [ plasma-manager.homeManagerModules.plasma-manager ];
-
-            home-manager.users.cazzzer = import ./home;
-            # Optionally, use home-manager.extraSpecialArgs to pass
-            # arguments to home.nix
-          }
+          (hmModule ./home/cazzzer-pc.nix)
         ];
       };
       Yura-TPX13 = nixpkgs.lib.nixosSystem {
@@ -53,19 +58,12 @@
         modules = [
           ./modules
           ./hosts/common.nix
+          ./hosts/common-desktop.nix
           ./hosts/Yura-TPX13
           ./users/cazzzer
           # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
           home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.sharedModules = [ plasma-manager.homeManagerModules.plasma-manager ];
-
-            home-manager.users.cazzzer = import ./home;
-            # Optionally, use home-manager.extraSpecialArgs to pass
-            # arguments to home.nix
-          }
+          (hmModule ./home/cazzzer-laptop.nix)
         ];
       };
       VM = nixpkgs.lib.nixosSystem {

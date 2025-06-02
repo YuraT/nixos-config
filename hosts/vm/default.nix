@@ -9,7 +9,7 @@
     [ # Include the results of the hardware scan.
       # ./hardware-configuration.nix
     ];
-  mods.kb-input.enable = false;
+  opts.kb-input.enable = false;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -51,9 +51,6 @@
   # services.cloud-init.network.enable = false;
   services.qemuGuest.enable = true;
   services.spice-vdagentd.enable = true;
-  services.openssh.enable = true;
-  services.openssh.settings.PasswordAuthentication = false;
-  services.openssh.settings.KbdInteractiveAuthentication = false;
 
   security.sudo.wheelNeedsPassword = false;
 

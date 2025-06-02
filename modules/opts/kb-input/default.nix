@@ -4,10 +4,10 @@
   lib,
   ...
 }: let
-  cfg = config.mods.kb-input;
+  cfg = config.opts.kb-input;
 in {
   options = {
-    mods.kb-input = {
+    opts.kb-input = {
       enable = lib.mkEnableOption "input method and custom keyboard layout";
       enableMinimak = lib.mkOption {
         type = lib.types.bool;

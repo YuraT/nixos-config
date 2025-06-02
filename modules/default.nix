@@ -1,6 +1,6 @@
 { ... }: {
   imports = [
-    ./mods
+    ./opts
     ./workarounds
   ];
 }

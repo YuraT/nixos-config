@@ -14,29 +14,5 @@
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE02AhJIZtrtZ+5sZhna39LUUCEojQzmz2BDWguT9ZHG yuri@tati.sh"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHczlipzGWv8c6oYwt2/9ykes5ElfneywDXBTOYbfSfn Pixel7Pro"
     ];
-    # TODO: think of a better way to do this
-    packages = with pkgs; lib.optionals (config.networking.hostName == "Yura-PC") [
-      # Python
-      python3
-      poetry
-
-      # Haskell
-      haskellPackages.ghc
-      haskellPackages.stack
-
-      # Node
-      nodejs_22
-      pnpm
-      bun
-
-      # Nix
-      nil
-      nixd
-      nixfmt-rfc-style
-
-      # Gleam
-      gleam
-      beamMinimal26Packages.erlang
-    ];
   };
 }
