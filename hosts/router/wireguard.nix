@@ -1,11 +1,23 @@
 { config, lib, pkgs, ... }:
 let
   vars = import ./vars.nix;
-  wg0 = vars.wg.wg0;
+  wg0 = vars.ifs.wg0;
+
+  peerIps = ifObj: token: [
+    "${ifObj.p4}.${toString token}/32"
+    "${ifObj.p6}:${toString token}:0/112"
+    "${ifObj.ulaPrefix}:${toString token}:0/112"
+  ];
+
+  mkWg0Peer = token: publickey: {
+    allowedIPs = peerIps wg0 token;
+    inherit publickey;
+    pskEnabled = true;
+  };
 
   wg0Peers = {
     "Yura-TPX13" = {
-      allowedIPs = [ "${wg0.p4}.3/32" "${wg0.p6}:3:0/112" ];
+      allowedIPs = peerIps wg0 3;
       publicKey = "iJa5JmJbMHNlbEluNwoB2Q8LyrPAfb7S/mluanMcI08=";
       pskEnabled = true;
     };
@@ -60,7 +72,7 @@ in
       networkConfig = {
         IPv4Forwarding = true;
         IPv6SendRA = false;
-        Address = [ wg0.addr4Sized wg0.addr6Sized ];
+        Address = [ wg0.addr4Sized wg0.addr6Sized wg0.ulaAddrSized ];
       };
     };
   };

@@ -5,8 +5,11 @@ let
     name_,
     domain_,
     p4_,  # /24
+    p4Size_ ? 24,
     p6_,  # /64
+    p6Size_ ? 64,
     ulaPrefix_,  # /64
+    ulaSize_ ? 64,
     token? 1,
     ip6Token_? "::${toString token}",
     ulaToken_? "::${toString token}",
@@ -14,18 +17,18 @@ let
       name = name_;
       domain = domain_;
       p4 = p4_;
-      p4Size = 24;
+      p4Size = p4Size_;
       net4 = "${p4}.0/${toString p4Size}";
       addr4 = "${p4}.${toString token}";
       addr4Sized = "${addr4}/${toString p4Size}";
       p6 = p6_;
-      p6Size = 64;
+      p6Size = p6Size_;
       net6 = "${p6}::/${toString p6Size}";
       ip6Token = ip6Token_;
       addr6 = "${p6}${ip6Token}";
       addr6Sized = "${addr6}/${toString p6Size}";
       ulaPrefix = ulaPrefix_;
-      ulaSize = 64;
+      ulaSize = ulaSize_;
       ulaNet = "${ulaPrefix}::/${toString ulaSize}";
       ulaToken = ulaToken_;
       ulaAddr = "${ulaPrefix}${ulaToken}";
@@ -97,17 +100,14 @@ rec {
       p6_ = "${pdFromWan}a";             # ::/64
       ulaPrefix_ = "${ulaPrefix}:0050";  # ::/64
     };
-  };
-
-  wg = {
-    wg0 = rec {
-      name = "wg0";
-      p4 = "10.18.16";  # .0/24
-      addr4 = "${p4}.1";
-      addr4Sized = "${addr4}/24";
-      p6 = "${pdFromWan}f::6";  # :0:0/96
-      addr6 = "${p6}:0:1";
-      addr6Sized = "${addr6}/96";
+    wg0 = mkIfConfig {
+      name_ = "wg0";
+      domain_ = "wg0.${ldomain}";
+      p4_ = "10.18.16";  # .0/24
+      p6_ = "${pdFromWan}8:0:6";  # ::/96
+      p6Size_ = 96;
+      ulaPrefix_ = "${ulaPrefix}:0100:0:6";  # ::/96
+      ulaSize_ = 96;
     };
   };
 

@@ -13,7 +13,7 @@ let
         ${ifs.lan30.name},
         ${ifs.lan40.name},
         ${ifs.lan50.name},
-        wg0,
+        ${ifs.wg0.name},
     }
     define OPNSENSE_NET6 = ${vars.extra.opnsense.net6}
     define ZONE_LAN_EXTRA_NET6 = {
