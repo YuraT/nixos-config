@@ -9,28 +9,15 @@ let
     "${ifObj.ulaPrefix}:${toString token}:0/112"
   ];
 
-  mkWg0Peer = token: publickey: {
+  mkWg0Peer = token: publicKey: {
     allowedIPs = peerIps wg0 token;
-    inherit publickey;
+    inherit publicKey;
     pskEnabled = true;
   };
 
   wg0Peers = {
-    "Yura-TPX13" = {
-      allowedIPs = peerIps wg0 3;
-      publicKey = "iJa5JmJbMHNlbEluNwoB2Q8LyrPAfb7S/mluanMcI08=";
-      pskEnabled = true;
-    };
-    "Yura-Pixel7Pro" = {
-      allowedIPs = [ "${wg0.p4}.4/32" "${wg0.p6}:4:0/112" ];
-      publicKey = "UjZlsukmAsX60Z5FnZwKCSu141Gjj74+hBVT3TRhwT4=";
-      pskEnabled = true;
-    };
-    "AsusS513" = {
-      allowedIPs = [ "${wg0.p4}.100/32" ];
-      publicKey = "XozJ7dHdJfkLORkCVxaB1VmvHEOAA285kRZcmzfPl38=";
-      pskEnabled = false;
-    };
+    "Yura-TPX13" = mkWg0Peer 100 "iFdsPYrpw7vsFYYJB4SOTa+wxxGVcmYp9CPxe0P9ewA=";
+    "Yura-Pixel7Pro" = mkWg0Peer 101 "GPdXxjvnhsyufd2QX/qsR02dinUtPnnxrE66oGt/KyA=";
   };
   peerSecretName = name: "wg0-peer-${name}-psk";
   secrets = config.secrix.services.systemd-networkd.secrets;
@@ -41,6 +28,8 @@ in
     mapPeer = name: peer: {
       name = peerSecretName name;
       value.encrypted.file = ./secrets/wireguard/${peerSecretName name}.age;
+      value.decrypted.user = "systemd-network";
+      value.decrypted.group = "systemd-network";
     };
     peerSecrets = lib.attrsets.mapAttrs' mapPeer pskPeers;
   in
@@ -52,11 +41,11 @@ in
     "10-wg0" = {
       netdevConfig = {
         Kind = "wireguard";
-        Name = "wg0";
+        Name = wg0.name;
       };
       wireguardConfig = {
         PrivateKeyFile = secrets.wg0-private-key.decrypted.path;
-        ListenPort = 18596;
+        ListenPort = wg0.listenPort;
       };
       wireguardPeers = map (peer: {
         AllowedIPs = lib.strings.concatStringsSep "," peer.value.allowedIPs;

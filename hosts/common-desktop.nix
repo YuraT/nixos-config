@@ -114,6 +114,7 @@
     ripgrep-all
     rustscan
     whois
+    wireguard-tools
     yt-dlp
   ] ++ [
     bitwarden-desktop

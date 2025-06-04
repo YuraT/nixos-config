@@ -87,7 +87,7 @@ in
     content = ''
       ${nftIdentifiers}
       define ALLOWED_TCP_PORTS = { ssh }
-      define ALLOWED_UDP_PORTS = { 18596 }
+      define ALLOWED_UDP_PORTS = { ${toString vars.ifs.wg0.listenPort} }
       define ALLOWED_TCP_LAN_PORTS = { ssh, https }
       define ALLOWED_UDP_LAN_PORTS = { bootps, dhcpv6-server, domain, https }
       set port_forward_v6 {

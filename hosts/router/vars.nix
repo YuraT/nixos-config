@@ -108,6 +108,8 @@ rec {
       p6Size_ = 96;
       ulaPrefix_ = "${ulaPrefix}:0100:0:6";  # ::/96
       ulaSize_ = 96;
+    } // {
+      listenPort = 51944;
     };
   };
 

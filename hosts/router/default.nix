@@ -78,6 +78,7 @@ in
     transcrypt
     waypipe
     whois
+    wireguard-tools
   ];
 
   # This value determines the NixOS release from which the default
