@@ -8,6 +8,7 @@ in
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./ifconfig.nix
+      ./wireguard.nix
       ./firewall.nix
       ./dns.nix
       ./kea.nix
@@ -77,6 +78,7 @@ in
     transcrypt
     waypipe
     whois
+    wireguard-tools
   ];
 
   # This value determines the NixOS release from which the default

@@ -13,6 +13,7 @@ let
         ${ifs.lan30.name},
         ${ifs.lan40.name},
         ${ifs.lan50.name},
+        ${ifs.wg0.name},
     }
     define OPNSENSE_NET6 = ${vars.extra.opnsense.net6}
     define ZONE_LAN_EXTRA_NET6 = {
@@ -85,8 +86,10 @@ in
     family = "inet";
     content = ''
       ${nftIdentifiers}
-      define ALLOWED_TCP_PORTS = { ssh, https }
-      define ALLOWED_UDP_PORTS = { bootps, dhcpv6-server, domain, https }
+      define ALLOWED_TCP_PORTS = { ssh }
+      define ALLOWED_UDP_PORTS = { ${toString vars.ifs.wg0.listenPort} }
+      define ALLOWED_TCP_LAN_PORTS = { ssh, https }
+      define ALLOWED_UDP_LAN_PORTS = { bootps, dhcpv6-server, domain, https }
       set port_forward_v6 {
           type inet_proto . ipv6_addr . inet_service
           elements = {
@@ -133,6 +136,10 @@ in
           # but apparently not.
           ip6 daddr { fe80::/10, ff02::/16 } th dport { dhcpv6-client, dhcpv6-server } accept
 
+          # Global input rules
+          tcp dport $ALLOWED_TCP_PORTS accept
+          udp dport $ALLOWED_UDP_PORTS accept
+
           # WAN zone input rules
           iifname $ZONE_WAN_IFS jump zone_wan_input
           # LAN zone input rules
@@ -157,8 +164,7 @@ in
       }
 
       chain zone_wan_input {
-          # Allow SSH from WAN (if needed)
-          tcp dport ssh accept
+          # Allow specific stuff from WAN
       }
 
       chain zone_wan_forward {
@@ -180,8 +186,8 @@ in
           ip protocol icmp accept
 
           # Allow specific services from LAN
-          tcp dport $ALLOWED_TCP_PORTS accept
-          udp dport $ALLOWED_UDP_PORTS accept
+          tcp dport $ALLOWED_TCP_LAN_PORTS accept
+          udp dport $ALLOWED_UDP_LAN_PORTS accept
       }
 
       chain zone_lan_forward {

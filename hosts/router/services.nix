@@ -52,7 +52,7 @@ in
     };
   };
 
-  secrix.system.secrets.cf-api-key.encrypted.file = ../../secrets/cf_api_key.age;
+  secrix.system.secrets.cf-api-key.encrypted.file = ./secrets/cf-api-key.age;
   systemd.services.caddy.serviceConfig.EnvironmentFile = config.secrix.system.secrets.cf-api-key.decrypted.path;
   services.caddy = {
     enable = true;

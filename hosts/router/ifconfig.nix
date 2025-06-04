@@ -83,7 +83,7 @@ in
       ia_pd 30/${ifs.lan30.net6} -
       ia_pd 40/${ifs.lan40.net6} -
       ia_pd 50/${ifs.lan50.net6} -
-      # ia_pd 7 -
+      ia_pd 100/${pdFromWan}9::/64 -  # for vpn stuff
       # ia_pd 8 -
 
       # the leases can be assigned to the interfaces,
