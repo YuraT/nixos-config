@@ -1,6 +1,6 @@
+config:
 let
-  private = import ./private.nix;
-
+  cfg = config.router;
   mkIfConfig = {
     name_,
     domain_,
@@ -10,7 +10,7 @@ let
     p6Size_ ? 64,
     ulaPrefix_,  # /64
     ulaSize_ ? 64,
-    token? 1,
+    token? cfg.defaultToken,
     ip6Token_? "::${toString token}",
     ulaToken_? "::${toString token}",
     }: rec {
@@ -41,21 +41,21 @@ rec {
   ldomain = "l.${domain}";
   sysdomain = "sys.${domain}";
   links = {
-    wanMAC = "bc:24:11:4f:c9:c4";
-    lanMAC = "bc:24:11:83:d8:de";
-    wanLL = "fe80::be24:11ff:fe4f:c9c4";
-    lanLL = "fe80::be24:11ff:fe83:d8de";
+    wanMAC = cfg.wanMAC;
+    lanMAC = cfg.lanMAC;
+    wanLL = cfg.wanLL;
+    lanLL = cfg.lanLL;
   };
 
   p4 = "10.17";                      # .0.0/16
-  pdFromWan = private.pdFromWan;  # ::/60
+  pdFromWan = cfg.pdFromWan;         # ::/60
   ulaPrefix = "fdab:07d3:581d";      # ::/48
   ifs = rec {
     wan = rec {
       name = "wan";
-      addr4 = private.wanAddr4;
-      addr4Sized = "${addr4}/23";
-      gw4 = private.wanGw4;
+      addr4 = cfg.wanAddr4;
+      addr4Sized = "${addr4}/24";
+      gw4 = cfg.wanGw4;
     };
     lan = mkIfConfig {
       name_ = "lan";
@@ -77,7 +77,7 @@ rec {
       p4_ = "${p4}.20";                  # .0/24
       p6_ = "${pdFromWan}0";             # ::/64 managed by Att box
       ulaPrefix_ = "${ulaPrefix}:0020";  # ::/64
-      ip6Token_ = "::1:1";  # override ipv6 for lan20, since the Att box uses ::1 here
+      ip6Token_ = "::1:${toString cfg.defaultToken}";  # override ipv6 for lan20, since the Att box uses ::1 here
     };
     lan30 = mkIfConfig {
       name_ = "${lan.name}.30";

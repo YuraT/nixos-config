@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 let
-  vars = import ./vars.nix;
+  cfg = config.router;
+  vars = import ./vars.nix config;
   links = vars.links;
   ifs = vars.ifs;
   pdFromWan = vars.pdFromWan;
@@ -57,7 +58,7 @@ in
   # https://github.com/systemd/systemd/issues/22571
   # https://github.com/systemd/systemd/issues/22571#issuecomment-2094905496
   # https://gist.github.com/csamsel/0f8cca3b2e64d7e4cc47819ec5ba9396
-  networking.dhcpcd.enable = true;
+  networking.dhcpcd.enable = cfg.enableDhcpClient;
   networking.dhcpcd.allowInterfaces = [ ifs.wan.name ];
   networking.dhcpcd.extraConfig = ''
     debug

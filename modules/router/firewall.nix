@@ -1,6 +1,6 @@
 { config, lib, pkgs, ... }:
 let
-  vars = import ./vars.nix;
+  vars = import ./vars.nix config;
   links = vars.links;
   ifs = vars.ifs;
   pdFromWan = vars.pdFromWan;

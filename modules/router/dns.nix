@@ -1,6 +1,6 @@
 { config, lib, pkgs, ... }:
 let
-  vars = import ./vars.nix;
+  vars = import ./vars.nix config;
   domain = vars.domain;
   ldomain = vars.ldomain;
   sysdomain = vars.sysdomain;
