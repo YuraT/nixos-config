@@ -53,9 +53,9 @@ rec {
   ifs = rec {
     wan = rec {
       name = "wan";
-      addr4 = "192.168.1.61";
-      addr4Sized = "${addr4}/24";
-      gw4 = "192.168.1.254";
+      addr4 = private.wanAddr4;
+      addr4Sized = "${addr4}/23";
+      gw4 = private.wanGw4;
     };
     lan = mkIfConfig {
       name_ = "lan";
