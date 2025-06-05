@@ -47,7 +47,15 @@ in
       map port_forward {
           type inet_proto . inet_service : ipv4_addr . inet_service
           elements = {
-              tcp . 8006 : ${ifs.lan50.p4}.10 . 8006
+              tcp . 8006 : ${ifs.lan50.p4}.10 . 8006,
+              # opnsense vpn endpoints
+              # the plan is to maybe eventually move these to nixos
+              udp . 18596 : ${vars.extra.opnsense.addr4} . 18596,
+              udp . 48512 : ${vars.extra.opnsense.addr4} . 48512,
+              udp . 40993 : ${vars.extra.opnsense.addr4} . 40993,
+              udp . 45608 : ${vars.extra.opnsense.addr4} . 45608,
+              udp . 35848 : ${vars.extra.opnsense.addr4} . 35848,
+              udp . 48425 : ${vars.extra.opnsense.addr4} . 48425,
           }
       }
 
