@@ -1,6 +1,5 @@
 {
   imports = [
-    ../../modules/router
     ./hardware-configuration.nix
     ./private.nix
   ];

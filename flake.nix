@@ -37,6 +37,19 @@
       # Optionally, use home-manager.extraSpecialArgs to pass
       # arguments to home.nix
     };
+
+    mkRouter = hostFile: nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        secrix.nixosModules.default
+        ./modules
+        ./modules/router
+        ./hosts/common.nix
+        hostFile
+        ./users/cazzzer
+        (hmModule ./home/common.nix)
+      ];
+    };
   in
   {
     apps.x86_64-linux.secrix = secrix.secrix self;
@@ -77,17 +90,9 @@
           (hmModule ./home/cazzzer-pc.nix)
         ];
       };
-      router = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          secrix.nixosModules.default
-          ./modules
-          ./hosts/common.nix
-          ./hosts/router
-          ./users/cazzzer
-          (hmModule ./home/common.nix)
-        ];
-      };
+      router = mkRouter ./hosts/router;
+      router-1 = mkRouter ./hosts/router-1;
+      router-2 = mkRouter ./hosts/router-2;
     };
     # https://github.com/nix-community/nixos-generators?tab=readme-ov-file#using-in-a-flake
     packages.x86_64-linux = {
