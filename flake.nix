@@ -27,6 +27,8 @@
   outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators, secrix }:
   let
     hmModule = file: {
+      imports = [ home-manager.nixosModules.home-manager ];
+
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
       home-manager.sharedModules = [ plasma-manager.homeManagerModules.plasma-manager ];
@@ -49,7 +51,6 @@
           ./hosts/Yura-PC
           ./users/cazzzer
           # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
-          home-manager.nixosModules.home-manager
           (hmModule ./home/cazzzer-pc.nix)
         ];
       };
@@ -62,7 +63,6 @@
           ./hosts/Yura-TPX13
           ./users/cazzzer
           # https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module
-          home-manager.nixosModules.home-manager
           (hmModule ./home/cazzzer-laptop.nix)
         ];
       };
@@ -74,6 +74,7 @@
           ./hosts/hw-vm.nix
           ./hosts/vm
           ./users/cazzzer
+          (hmModule ./home/cazzzer-pc.nix)
         ];
       };
       router = nixpkgs.lib.nixosSystem {
@@ -84,6 +85,7 @@
           ./hosts/common.nix
           ./hosts/router
           ./users/cazzzer
+          (hmModule ./home/common.nix)
         ];
       };
     };
@@ -97,6 +99,7 @@
           ./hosts/hw-proxmox.nix
           ./hosts/vm
           ./users/cazzzer
+          (hmModule ./home/cazzzer-pc.nix)
         ];
         format = "proxmox";
       };
@@ -109,6 +112,7 @@
             ./hosts/hw-proxmox.nix
             ./hosts/vm
             ./users/cazzzer
+            (hmModule ./home/cazzzer-pc.nix)
           ];
         };
       in
