@@ -5,7 +5,7 @@
     isNormalUser = true;
     description = "Yura";
     group = "cazzzer";
-    extraGroups = [ "wheel" ]
+    extraGroups = [ "wheel" "dialout" ]
       ++ lib.optionals config.networking.networkmanager.enable [ "networkmanager" ]
       ++ lib.optionals config.virtualisation.docker.enable [ "docker" ]
       ++ lib.optionals config.programs.wireshark.enable [ "wireshark" ]
