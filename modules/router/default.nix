@@ -14,6 +14,7 @@ in
       ./kea.nix
       ./glance.nix
       ./services.nix
+      ./keepalived.nix
     ];
   # Secrix for secrets management
   secrix.hostPubKey = vars.pubkey;
