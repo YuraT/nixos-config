@@ -18,6 +18,11 @@
       fsType = "zfs";
     };
 
+  fileSystems."/nix" =
+    { device = "zroot/data/nix";
+      fsType = "zfs";
+    };
+
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/970C-6A15";
       fsType = "vfat";
