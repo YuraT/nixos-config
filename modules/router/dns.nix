@@ -85,6 +85,7 @@ in
 
       # Allowed exceptions
       "@@||googleads.g.doubleclick.net"
+      "@@||stats.grafana.org"
     ]
       # Alpina DNS rewrites
       ++ map (host: "${host}${domain}^$dnsrewrite=debbi.${sysdomain}") alpinaDomains;
