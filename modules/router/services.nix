@@ -60,25 +60,29 @@ in
       plugins = [ "github.com/caddy-dns/cloudflare@v0.2.1" ];
       hash = "sha256-2D7dnG50CwtCho+U+iHmSj2w14zllQXPjmTHr6lJZ/A=";
     };
-    virtualHosts."grouter.${domain}".extraConfig = ''
+    virtualHosts."*.${domain}".extraConfig = ''
       encode
       tls {
           dns cloudflare {env.CF_API_KEY}
           resolvers 1.1.1.1
       }
-      @grafana path /grafana /grafana/*
-      handle @grafana {
-          reverse_proxy localhost:${toString config.services.grafana.settings.server.http_port}
-      }
-      redir /adghome /adghome/
-      handle_path /adghome/* {
-          reverse_proxy localhost:${toString config.services.adguardhome.port}
-          basic_auth {
-              Bob $2a$14$HsWmmzQTN68K3vwiRAfiUuqIjKoXEXaj9TOLUtG2mO1vFpdovmyBy
+
+      @grouter host grouter.${domain}
+      handle @grouter {
+          @grafana path /grafana /grafana/*
+          handle @grafana {
+              reverse_proxy localhost:${toString config.services.grafana.settings.server.http_port}
           }
-      }
-      handle /* {
-          reverse_proxy localhost:${toString config.services.glance.settings.server.port}
+          redir /adghome /adghome/
+          handle_path /adghome/* {
+              reverse_proxy localhost:${toString config.services.adguardhome.port}
+              basic_auth {
+                  Bob $2a$14$HsWmmzQTN68K3vwiRAfiUuqIjKoXEXaj9TOLUtG2mO1vFpdovmyBy
+              }
+          }
+          handle /* {
+              reverse_proxy localhost:${toString config.services.glance.settings.server.port}
+          }
       }
     '';
   };
