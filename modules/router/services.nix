@@ -84,6 +84,11 @@ in
               reverse_proxy localhost:${toString config.services.glance.settings.server.port}
           }
       }
+
+      @hass host hass.${domain}
+      handle @hass {
+          reverse_proxy homeassistant.4.lab.l.cazzzer.com:8123
+      }
     '';
   };
 }

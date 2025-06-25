@@ -80,6 +80,8 @@ in
       "|etappi.${sysdomain}^$dnsrewrite=${ifs.lan.p4}.12"
       "|etappi.${sysdomain}^$dnsrewrite=${ifs.lan.ulaPrefix}::12:1"
 
+      "|hass.${domain}^$dnsrewrite=${ifs.lan.ulaAddr}"
+
       # Lab DNS rewrites
       "||lab.${domain}^$dnsrewrite=etappi.${sysdomain}"
 
