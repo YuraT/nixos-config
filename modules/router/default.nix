@@ -76,6 +76,7 @@ in
     starship
     tealdeer
     transcrypt
+    wakeonlan
     waypipe
     whois
     wireguard-tools

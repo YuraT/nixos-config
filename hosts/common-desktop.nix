@@ -7,7 +7,7 @@
     "sysrq_always_enabled=1"
   ];
 
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_14;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_15;
   boot.loader = {
     efi.canTouchEfiVariables = true;
     timeout = 3;
@@ -107,6 +107,7 @@
     jq
     ldns
     mediainfo
+    powertop
     rbw
     restic
     resticprofile
