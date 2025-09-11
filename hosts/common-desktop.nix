@@ -8,6 +8,7 @@
   ];
 
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_15;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_16;
   boot.loader = {
     efi.canTouchEfiVariables = true;
     timeout = 3;
