@@ -61,7 +61,7 @@
   programs.git.enable = true;
   programs.git.lfs.enable = true;
   # https://nixos.wiki/wiki/Git
-  programs.git.package = pkgs.git.override { withLibsecret = true; };
+  programs.git.package = pkgs.git.override { withLibsecret = true; doInstallCheck = false; };
   programs.lazygit.enable = true;
   programs.neovim.enable = true;
   programs.wireshark.enable = true;
