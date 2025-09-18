@@ -7,7 +7,6 @@
     "sysrq_always_enabled=1"
   ];
 
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_15;
   boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_16;
   boot.loader = {
     efi.canTouchEfiVariables = true;
@@ -146,6 +145,7 @@
     android-studio
     rustup
     zed-editor
+    package-version-server # for zed
   ] ++ [
     # Python
     python3
@@ -168,5 +168,8 @@
     # Gleam
     gleam
     beamMinimal26Packages.erlang
+    
+    # Racket
+    racket
   ];
 }
