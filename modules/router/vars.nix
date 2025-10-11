@@ -136,5 +136,6 @@ rec {
       ];
     };
     amnezia.addr4 = "${ifs.lan10.p4}.31";
+    minecruft.addr4 = "${ifs.lan.p4}.11";
   };
 }
