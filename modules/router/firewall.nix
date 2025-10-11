@@ -56,6 +56,8 @@ in
               udp . 45608 : ${vars.extra.opnsense.addr4} . 45608,
               udp . 35848 : ${vars.extra.opnsense.addr4} . 35848,
               udp . 48425 : ${vars.extra.opnsense.addr4} . 48425,
+              # Amnezia VPN server
+              udp . 37138 : ${vars.extra.amnezia.addr4} . 37138,
           }
       }
 

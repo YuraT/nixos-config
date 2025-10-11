@@ -135,5 +135,6 @@ rec {
         }
       ];
     };
+    amnezia.addr4 = "${ifs.lan10.p4}.31";
   };
 }
