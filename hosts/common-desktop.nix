@@ -147,6 +147,10 @@
     zed-editor
     package-version-server # for zed
   ] ++ [
+    # C
+    gcc
+    valgrind
+    
     # Python
     python3
     poetry
@@ -171,5 +175,8 @@
     
     # Racket
     racket
+    
+    # Ruby
+    ruby
   ];
 }
