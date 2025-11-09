@@ -28,6 +28,7 @@ let
     "|woodpecker."
     "||pgrok."
     "|sync."
+    "|minecruft."
   ];
 in
 {
