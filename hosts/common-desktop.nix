@@ -124,11 +124,17 @@
     bitwarden-desktop
     darkman
     host-spawn # for flatpaks
+    jellyfin-mpv-shim
     kdePackages.filelight
     kdePackages.flatpak-kcm
     kdePackages.kate
     kdePackages.yakuake
-    mpv
+    (mpv.override {
+      scripts = with pkgs.mpvScripts; [
+        mpris
+        videoclip
+      ];
+    })
     nextcloud-client
     lxqt.pavucontrol-qt
     pinentry
