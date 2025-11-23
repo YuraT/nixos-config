@@ -7,22 +7,24 @@ in
 {
   programs.git = {
     enable = true;
-
-    userName = name;
-    userEmail = email;
-
+    
     signing = {
       key = signingKey;
       signByDefault = true;
       format = "ssh";
     };
 
-    aliases = {
-      co = "checkout";
-      s = "switch";
-    };
-
-    extraConfig = {
+    settings = {
+      user = {
+        name = name;
+        email = email;
+      };
+      
+      aliases = {
+        co = "checkout";
+        s = "switch";
+      };
+      
       url = {
         "https://gitea.cazzzer.com/" = {
           insteadOf = "caztea:";

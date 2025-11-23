@@ -7,7 +7,7 @@
     "sysrq_always_enabled=1"
   ];
 
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_16;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_17;
   boot.loader = {
     efi.canTouchEfiVariables = true;
     timeout = 3;
@@ -82,7 +82,7 @@
     fantasque-sans-mono
     nerd-fonts.fantasque-sans-mono
     noto-fonts
-    noto-fonts-emoji
+    noto-fonts-color-emoji
     noto-fonts-cjk-sans
     noto-fonts-cjk-serif
     jetbrains-mono
@@ -137,7 +137,7 @@
     })
     nextcloud-client
     lxqt.pavucontrol-qt
-    pinentry
+    pinentry-all
     tela-circle-icon-theme
     virt-viewer
     waypipe
