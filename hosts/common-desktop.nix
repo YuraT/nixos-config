@@ -11,10 +11,7 @@
   boot.loader = {
     efi.canTouchEfiVariables = true;
     timeout = 3;
-    systemd-boot = {
-      enable = true;
-      configurationLimit = 5;
-    };
+    systemd-boot.enable = lib.mkDefault true;
   };
 
   # https://nixos.wiki/wiki/Accelerated_Video_Playback

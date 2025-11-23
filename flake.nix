@@ -22,9 +22,13 @@
       url = "github:Platonic-Systems/secrix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote/v0.4.3";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators, secrix }:
+  outputs = { self, nixpkgs, home-manager, plasma-manager, nixos-generators, secrix, lanzaboote }:
   let
     hmModule = file: {
       imports = [ home-manager.nixosModules.home-manager ];
@@ -70,6 +74,7 @@
       Yura-TPX13 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
+          lanzaboote.nixosModules.lanzaboote
           ./modules
           ./hosts/common.nix
           ./hosts/common-desktop.nix

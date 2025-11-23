@@ -11,6 +11,12 @@
     "sysrq_always_enabled=1"
   ];
 
+  boot.loader.systemd-boot.enable = false;
+  boot.lanzaboote = {
+    enable = true;
+    pkiBundle = "/var/lib/sbctl";
+  };
+
   networking.hostName = "Yura-TPX13"; # Define your hostname.
   networking.hostId = "8425e349"; # Required for ZFS.
 
