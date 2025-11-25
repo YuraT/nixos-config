@@ -29,6 +29,7 @@ let
     "||pgrok."
     "|sync."
     "|minecruft."
+    "|n8n."
   ];
 in
 {
