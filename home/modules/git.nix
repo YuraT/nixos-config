@@ -20,7 +20,7 @@ in
         email = email;
       };
       
-      aliases = {
+      alias = {
         co = "checkout";
         s = "switch";
       };
