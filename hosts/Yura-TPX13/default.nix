@@ -15,6 +15,8 @@
   networking.hostId = "8425e349"; # Required for ZFS.
 
   services.fprintd.enable = true;
+  security.pam.services.login.fprintAuth = false;
+
 
   # Install firefox.
   programs.firefox.enable = true;
