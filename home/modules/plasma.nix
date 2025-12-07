@@ -55,6 +55,8 @@
         activities-icons."809dc779-bf5b-49e6-8e3f-cbe283cb05b6" = "keyboard";
         activities-icons."b34a506d-ac4f-4797-8c08-6ef45bc49341" = "preferences-desktop-gaming";
       };
+      baloofilerc.General."exclude folders".persistent = true;
+      systemsettingsrc.systemsettings_sidebar_mode.HighlightNonDefaultSettings=true;
     };
   };
 
