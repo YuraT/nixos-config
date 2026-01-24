@@ -7,7 +7,8 @@
     "sysrq_always_enabled=1"
   ];
 
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_17;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_18;
+  boot.zfs.package = pkgs.zfs_2_4;
   boot.loader = {
     efi.canTouchEfiVariables = true;
     timeout = 3;
@@ -133,6 +134,7 @@
       ];
     })
     nextcloud-client
+    lutris
     lxqt.pavucontrol-qt
     pinentry-all
     tela-circle-icon-theme
@@ -142,8 +144,8 @@
     # jetbrains.rust-rover
     # jetbrains.goland
     jetbrains.clion
-    jetbrains.idea-ultimate
-    jetbrains.pycharm-professional
+    jetbrains.idea
+    jetbrains.pycharm
     jetbrains.webstorm
     android-studio
     rustup
@@ -170,7 +172,7 @@
     # Nix
     nil
     nixd
-    nixfmt-rfc-style
+    nixfmt
 
     # Gleam
     gleam
