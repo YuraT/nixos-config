@@ -66,6 +66,7 @@
   programs.wireshark.package = pkgs.wireshark; # wireshark-cli by default
   programs.bat.enable = true;
   programs.htop.enable = true;
+  programs.nix-ld.enable = true;
 
   # https://nixos.wiki/wiki/Docker
   virtualisation.docker.enable = true;
