@@ -160,6 +160,7 @@
     rustup
     zed-editor
     package-version-server # for zed
+    antigravity-fhs
   ] ++ [
     # C
     gcc
