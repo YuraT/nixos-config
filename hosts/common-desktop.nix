@@ -193,5 +193,11 @@
     
     # Ruby
     ruby
+  ] ++ [
+    jujutsu
+    lazyjj
+    jjui
+    # jj-fzf
+    gg-jj
   ];
 }
