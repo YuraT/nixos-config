@@ -119,10 +119,10 @@
     powertop
     rbw
     restic
-    resticprofile
     rclone
     ripgrep-all
     rustscan
+    unrar
     whois
     wireguard-tools
     yt-dlp
@@ -192,6 +192,9 @@
     
     # Ruby
     ruby
+
+    # Java
+    zulu
   ] ++ [
     jujutsu
     lazyjj
