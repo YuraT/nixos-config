@@ -185,7 +185,7 @@
 
     # Gleam
     gleam
-    beamMinimal26Packages.erlang
+    beamMinimal28Packages.erlang
     
     # Racket
     racket
