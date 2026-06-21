@@ -38,8 +38,7 @@
   services.xserver.enable = false;
 
   # Enable the KDE Plasma Desktop Environment.
-  services.displayManager.sddm.enable = true;
-  services.displayManager.sddm.wayland.enable = true;
+  services.displayManager.plasma-login-manager.enable = true;
   services.desktopManager.plasma6.enable = true;
 
   # Enable CUPS to print documents.
@@ -78,7 +77,6 @@
   # https://nixos.wiki/wiki/Docker
   virtualisation.docker.enable = true;
   virtualisation.docker.enableOnBoot = false;
-  virtualisation.docker.package = pkgs.docker_28;
 
   # https://github.com/flatpak/flatpak/issues/2861
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
@@ -93,6 +91,11 @@
     noto-fonts-cjk-serif
     jetbrains-mono
    ];
+
+  # remove after bitwarden update
+  nixpkgs.config.permittedInsecurePackages = [
+    "electron-39.8.10"
+  ];
 
   environment.systemPackages = with pkgs; [
     dust
@@ -142,10 +145,11 @@
       ];
     })
     nextcloud-client
-    lutris
+    # lutris
     lxqt.pavucontrol-qt
     pinentry-all
     tela-circle-icon-theme
+    typst
     virt-viewer
     waypipe
   ] ++ [
@@ -159,7 +163,13 @@
     rustup
     zed-editor
     package-version-server # for zed
+    antigravity-cli
     antigravity-fhs
+    codex
+    # codex-acp
+    github-copilot-cli
+    opencode
+    opencode-desktop
   ] ++ [
     # C
     gcc
@@ -170,6 +180,9 @@
     poetry
 
     # Haskell
+    cabal-install
+    haskell-language-server
+    # haskellPackages.hls-cabal-plugin
     haskellPackages.ghc
     haskellPackages.stack
 
