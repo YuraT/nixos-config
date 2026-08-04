@@ -73,6 +73,7 @@
   programs.bat.enable = true;
   programs.htop.enable = true;
   programs.nix-ld.enable = true;
+  # programs.steam.enable = true;
 
   # https://nixos.wiki/wiki/Docker
   virtualisation.docker.enable = true;
@@ -91,11 +92,6 @@
     noto-fonts-cjk-serif
     jetbrains-mono
    ];
-
-  # remove after bitwarden update
-  nixpkgs.config.permittedInsecurePackages = [
-    "electron-39.8.10"
-  ];
 
   environment.systemPackages = with pkgs; [
     dust
@@ -156,7 +152,7 @@
     # jetbrains.rust-rover
     # jetbrains.goland
     jetbrains.clion
-    jetbrains.idea
+    # jetbrains.idea
     jetbrains.pycharm
     jetbrains.webstorm
     android-studio
@@ -164,12 +160,12 @@
     zed-editor
     package-version-server # for zed
     antigravity-cli
-    antigravity-fhs
+    antigravity-ide-fhs
     codex
     # codex-acp
-    github-copilot-cli
-    opencode
-    opencode-desktop
+    # github-copilot-cli
+    # opencode
+    # opencode-desktop
   ] ++ [
     # C
     gcc
@@ -187,7 +183,7 @@
     haskellPackages.stack
 
     # Node
-    nodejs_22
+    nodejs_24
     pnpm
     bun
 
@@ -208,6 +204,8 @@
 
     # Java
     zulu
+
+    # spacetimedb
   ] ++ [
     jujutsu
     lazyjj
