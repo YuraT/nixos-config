@@ -70,7 +70,6 @@
   # https://github.com/flatpak/flatpak/issues/2861
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
-#  workarounds.flatpak.enable = true;
   fonts.packages = with pkgs; [
     noto-fonts-cjk-sans
     noto-fonts-cjk-serif
