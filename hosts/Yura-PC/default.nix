@@ -31,6 +31,10 @@
     intel-media-driver # LIBVA_DRIVER_NAME=iHD
   ];
 
+  environment.systemPackages = with pkgs; [
+    lmstudio
+  ];
+
   networking.hostName = "Yura-PC"; # Define your hostname.
   networking.hostId = "110a2814"; # Required for ZFS.
 
