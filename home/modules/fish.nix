@@ -5,11 +5,11 @@
     enable = true;
     shellInit = "set fish_greeting";
     shellAliases = {
-      # Replace ls with exa
-      ls = "exa -al --color=always --group-directories-first --icons"; # preferred listing
-      la = "exa -a --color=always --group-directories-first --icons";  # all files and dirs
-      ll = "exa -l --color=always --group-directories-first --icons";  # long format
-      lt = "exa -aT --color=always --group-directories-first --icons"; # tree listing
+      # Replace ls with eza
+      ls = "eza -al --color=always --group-directories-first --icons=always"; # preferred listing
+      la = "eza -a --color=always --group-directories-first --icons=always";  # all files and dirs
+      ll = "eza -l --color=always --group-directories-first --icons=always";  # long format
+      lt = "eza -aT --color=always --group-directories-first --icons=always"; # tree listing
       "l." = "exa -a | rg '^\.'";                                      # show only dotfiles
 
       # Replace cat with bat
