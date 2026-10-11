@@ -52,6 +52,9 @@ in
   # since my WAN and LAN20 are technically bridged.
   # https://networkengineering.stackexchange.com/questions/83071/why-linux-answers-arp-requests-for-ips-that-belong-to-different-network-interfac
   boot.kernel.sysctl."net.ipv4.conf.default.arp_filter" = 1;
+  # Later I discovered that rp_filter might also be good to set
+  # Strict mode (1) drops packets if the src ip isn't a local route on the interface
+  boot.kernel.sysctl."net.ipv4.conf.default.rp_filter" = 1;
 
   # It is impossible to do multiple prefix requests with networkd,
   # so I use dhcpcd for this

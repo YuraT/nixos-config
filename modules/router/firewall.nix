@@ -58,6 +58,7 @@ in
               udp . 48425 : ${vars.extra.opnsense.addr4} . 48425,
               # Amnezia VPN server
               udp . 37138 : ${vars.extra.amnezia.addr4} . 37138,
+              tcp . 38247 : ${vars.extra.amnezia.addr4} . 22,
               # Minecruft server
               tcp . 25565 : ${vars.extra.minecruft.addr4} . 25565,
               udp . 25565 : ${vars.extra.minecruft.addr4} . 25565,
