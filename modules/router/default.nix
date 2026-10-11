@@ -27,7 +27,7 @@ in
 
   boot.loader.timeout = 2;
   boot.loader.systemd-boot.configurationLimit = 5;
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
+  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_18;
   boot.growPartition = true;
 
   # Enable the X11 windowing system.
