@@ -29,10 +29,12 @@ in
   };
 
   # https://wiki.nixos.org/wiki/Grafana#Declarative_configuration
+  secrix.services.grafana.secrets.security-key.encrypted.file = ./secrets/grafana-secret-key.age;
   services.grafana = {
     enable = true;
     settings = {
       security.allow_embedding = true;
+      security.secret_key = "$__file{${config.secrix.services.grafana.secrets.security-key.decrypted.path}}";
       server = {
         http_port = 3001;
         domain = "grouter.${domain}";
