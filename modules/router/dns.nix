@@ -54,17 +54,17 @@ in
       enable_dnssec = true;
       bootstrap_dns = [ "1.1.1.1" "9.9.9.9" ];
       upstream_dns = [
-        # Default upstreams
-        "quic://p0.freedns.controld.com"
-        "tls://one.one.one.one"
-        "tls://dns.quad9.net"
-
         # Adguard uses upstream and not rewrite rules to resolve cname rewrites,
         # and obviously my sysdomain entries don't exist in cloudflare.
         "[/${sysdomain}/][::1]"           # Sys domains to self (for cname rewrites)
 
         "[/${ldomain}/][::1]:1053"        # Local domains to Knot (ddns)
         "[/home/][${ifs.lan.ulaPrefix}::250]"  # .home domains to opnsense (temporary)
+
+        # Default upstreams
+        "quic://p0.freedns.controld.com"
+        "tls://one.one.one.one"
+        "tls://dns.quad9.net"
       ];
     };
     # https://adguard-dns.io/kb/general/dns-filtering-syntax/
